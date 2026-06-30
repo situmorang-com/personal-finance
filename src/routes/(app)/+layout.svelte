@@ -39,8 +39,15 @@
 	];
 </script>
 
-<div class="min-h-screen bg-background text-foreground">
-	<header class="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-sm">
+<div class="relative min-h-screen bg-background text-foreground">
+	<!-- Ambient gradient mesh — subtle, fixed, sits behind all content -->
+	<div class="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+		<div class="absolute -top-40 -left-32 h-[28rem] w-[28rem] rounded-full bg-primary/10 blur-[100px] dark:bg-primary/15"></div>
+		<div class="absolute top-1/3 -right-32 h-[24rem] w-[24rem] rounded-full bg-violet-400/10 blur-[100px] dark:bg-violet-500/10"></div>
+		<div class="absolute bottom-0 left-1/4 h-[22rem] w-[22rem] rounded-full bg-indigo-400/5 blur-[100px] dark:bg-indigo-500/10"></div>
+	</div>
+
+	<header class="sticky top-0 z-40 border-b border-border bg-background/70 backdrop-blur-xl">
 		<div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
 			<div class="flex items-center gap-6">
 				<span class="text-base font-bold tracking-tight text-foreground">💰 Finance</span>
@@ -114,7 +121,7 @@
 		</div>
 	</header>
 
-	<main class="mx-auto max-w-6xl px-4 py-6">
+	<main class="relative z-10 mx-auto max-w-6xl px-4 py-6">
 		{@render children()}
 	</main>
 </div>

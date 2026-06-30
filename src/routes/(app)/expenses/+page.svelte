@@ -417,7 +417,7 @@
 		</div>
 		<button
 			onclick={openAdd}
-			class="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:opacity-90"
+			class="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:opacity-90 hover:glow-primary"
 		>
 			<PlusIcon class="h-4 w-4" />
 			New Expense
@@ -434,7 +434,7 @@
 	<div class="flex gap-3">
 		<!-- Spending by category donut -->
 		{#if ins.categorySlices.length > 0}
-			<div class="shrink-0 rounded-2xl border border-border bg-card p-5">
+			<div class="glass-card glass-card-hover shrink-0 rounded-2xl p-5 drop-shadow-[0_0_24px_rgba(99,102,241,0.08)]">
 				<div class="mb-3 flex items-center justify-between gap-4">
 					<p class="text-sm font-semibold text-card-foreground">Spending by category</p>
 					{#if filterCategoryId !== null}
@@ -463,10 +463,10 @@
 
 		<!-- 4 stat cards stacked -->
 		<div class="flex min-w-0 flex-1 flex-col gap-3">
-			<div class="flex flex-1 items-center justify-between rounded-2xl border border-border bg-card px-4 py-3">
+			<div class="glass-card glass-card-hover flex flex-1 items-center justify-between rounded-2xl px-4 py-3">
 				<p class="text-xs text-muted-foreground">Spent this month</p>
 				<div class="flex items-baseline gap-2">
-					<p class="text-base font-bold text-card-foreground">{formatMoney(ins.thisMonth.total, data.mainCurrency)}</p>
+					<p class="tabular text-base font-bold text-card-foreground">{formatMoney(ins.thisMonth.total, data.mainCurrency)}</p>
 					{#if vsLast !== null}
 						<span class="text-xs font-medium {vsLast > 0 ? 'text-rose-500' : 'text-emerald-500'}">
 							{vsLast > 0 ? '▲' : '▼'}{Math.abs(vsLast)}%
@@ -474,23 +474,23 @@
 					{/if}
 				</div>
 			</div>
-			<div class="flex flex-1 items-center justify-between rounded-2xl border border-border bg-card px-4 py-3">
+			<div class="glass-card glass-card-hover flex flex-1 items-center justify-between rounded-2xl px-4 py-3">
 				<p class="text-xs text-muted-foreground">Income received</p>
 				<div class="flex items-baseline gap-2">
-					<p class="text-base font-bold text-emerald-600 dark:text-emerald-400">{formatMoney(ins.thisMonth.income, data.mainCurrency)}</p>
+					<p class="tabular text-base font-bold text-emerald-600 dark:text-emerald-400">{formatMoney(ins.thisMonth.income, data.mainCurrency)}</p>
 					<span class="text-xs font-medium {ins.thisMonth.income >= ins.thisMonth.total ? 'text-emerald-500' : 'text-rose-500'}">
 						Net {ins.thisMonth.income >= ins.thisMonth.total ? '+' : '-'}{formatMoney(Math.abs(ins.thisMonth.income - ins.thisMonth.total), data.mainCurrency)}
 					</span>
 				</div>
 			</div>
-			<div class="flex flex-1 items-center justify-between rounded-2xl border border-border bg-card px-4 py-3">
+			<div class="glass-card glass-card-hover flex flex-1 items-center justify-between rounded-2xl px-4 py-3">
 				<p class="text-xs text-muted-foreground">Daily average</p>
 				<div class="flex items-baseline gap-2">
-					<p class="text-base font-bold text-card-foreground">{formatMoney(ins.thisMonth.dailyAvg, data.mainCurrency)}</p>
+					<p class="tabular text-base font-bold text-card-foreground">{formatMoney(ins.thisMonth.dailyAvg, data.mainCurrency)}</p>
 					<span class="text-xs text-muted-foreground">{ins.thisMonth.txnCount} txns</span>
 				</div>
 			</div>
-			<div class="flex flex-1 items-center justify-between rounded-2xl border border-border bg-card px-4 py-3">
+			<div class="glass-card glass-card-hover flex flex-1 items-center justify-between rounded-2xl px-4 py-3">
 				<p class="text-xs text-muted-foreground">Top category</p>
 				{#if ins.topCategory}
 					<div class="flex items-baseline gap-2">
@@ -506,21 +506,22 @@
 
 	<!-- Budgets -->
 	{#if ins.budgets.length > 0}
-		<div class="rounded-2xl border border-border bg-card p-5">
+		<div class="glass-card rounded-2xl p-5">
 			<p class="mb-4 text-sm font-semibold text-card-foreground">Budgets this month</p>
 			<div class="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
 				{#each ins.budgets as b (b.categoryId)}
+					{@const barColor = b.pct >= 100 ? '#f43f5e' : b.pct >= 80 ? '#fbbf24' : b.color}
 					<div>
 						<div class="mb-1 flex items-center justify-between text-sm">
 							<span class="font-medium" style="color: {b.color}">{b.name}</span>
-							<span class="text-xs {b.pct >= 100 ? 'font-semibold text-rose-500' : 'text-muted-foreground'}">
+							<span class="tabular text-xs {b.pct >= 100 ? 'font-semibold text-rose-500' : 'text-muted-foreground'}">
 								{formatMoney(b.spent, data.mainCurrency)} / {formatMoney(b.budget, data.mainCurrency)}
 							</span>
 						</div>
-						<div class="h-2 w-full overflow-hidden rounded-full bg-muted">
+						<div class="h-2 w-full overflow-hidden rounded-full bg-muted/60">
 							<div
-								class="h-full rounded-full transition-all {b.pct >= 100 ? 'bg-rose-500' : b.pct >= 80 ? 'bg-amber-400' : ''}"
-								style="width: {Math.min(b.pct, 100)}%; {b.pct < 80 ? `background-color: ${b.color}` : ''}"
+								class="h-full rounded-full transition-all"
+								style="width: {Math.min(b.pct, 100)}%; background-color: {barColor}; box-shadow: 0 0 8px 0 {barColor}88;"
 							></div>
 						</div>
 					</div>
@@ -533,13 +534,13 @@
 	<div class="grid grid-cols-3 gap-3">
 
 		<!-- Biggest expense -->
-		<div class="rounded-2xl border border-border bg-card p-4">
+		<div class="glass-card glass-card-hover rounded-2xl p-4">
 			<p class="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
 				<span class="text-base">💸</span> Biggest expense
 			</p>
 			{#if ins.biggestExpense}
 				<p class="truncate font-semibold text-card-foreground">{ins.biggestExpense.name}</p>
-				<p class="mt-0.5 text-xl font-bold text-rose-500">{formatMoney(ins.biggestExpense.amount, data.mainCurrency)}</p>
+				<p class="tabular mt-0.5 text-xl font-bold text-rose-500">{formatMoney(ins.biggestExpense.amount, data.mainCurrency)}</p>
 				<p class="mt-1 text-xs text-muted-foreground">{ins.biggestExpense.date}</p>
 			{:else}
 				<p class="text-sm text-muted-foreground">—</p>
@@ -547,12 +548,10 @@
 		</div>
 
 		<!-- Anomalies -->
-		<div class="rounded-2xl border p-4
-			{ins.anomalies.length > 0
-				? 'border-amber-200/50 bg-amber-50/50 dark:border-amber-700/30 dark:bg-amber-950/20'
-				: 'border-border bg-card'}">
+		<div class="glass-card glass-card-hover rounded-2xl p-4
+			{ins.anomalies.length > 0 ? 'drop-shadow-[0_0_18px_rgba(245,158,11,0.12)]' : ''}">
 			<p class="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide
-				{ins.anomalies.length > 0 ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}">
+				{ins.anomalies.length > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}">
 				<span class="text-base">⚠️</span> Spending spike
 			</p>
 			{#if ins.anomalies.length > 0}
@@ -560,9 +559,9 @@
 					<div class="mb-2 last:mb-0">
 						<div class="flex items-center justify-between">
 							<span class="text-sm font-semibold" style="color: {a.color}">{a.categoryName}</span>
-							<span class="text-sm font-bold text-amber-600 dark:text-amber-400">+{a.pctChange}%</span>
+							<span class="tabular text-sm font-bold text-amber-600 dark:text-amber-400">+{a.pctChange}%</span>
 						</div>
-						<p class="text-xs text-muted-foreground">{formatMoney(a.lastMonth, data.mainCurrency)} → {formatMoney(a.thisMonth, data.mainCurrency)}</p>
+						<p class="tabular text-xs text-muted-foreground">{formatMoney(a.lastMonth, data.mainCurrency)} → {formatMoney(a.thisMonth, data.mainCurrency)}</p>
 					</div>
 				{/each}
 			{:else}
@@ -571,10 +570,8 @@
 		</div>
 
 		<!-- New recurring -->
-		<div class="rounded-2xl border p-4
-			{ins.newRecurring.length > 0
-				? 'border-indigo-200/50 bg-indigo-50/50 dark:border-indigo-700/30 dark:bg-indigo-950/20'
-				: 'border-border bg-card'}">
+		<div class="glass-card glass-card-hover rounded-2xl p-4
+			{ins.newRecurring.length > 0 ? 'drop-shadow-[0_0_18px_rgba(99,102,241,0.12)]' : ''}">
 			<p class="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide
 				{ins.newRecurring.length > 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-muted-foreground'}">
 				<span class="text-base">🔄</span> New recurring
@@ -583,7 +580,7 @@
 				{#each ins.newRecurring as r (r.name)}
 					<div class="mb-2 last:mb-0">
 						<p class="truncate text-sm font-semibold text-card-foreground">{r.name}</p>
-						<p class="text-xs text-muted-foreground">{r.count}× · avg {formatMoney(r.avgAmount, data.mainCurrency)}</p>
+						<p class="tabular text-xs text-muted-foreground">{r.count}× · avg {formatMoney(r.avgAmount, data.mainCurrency)}</p>
 					</div>
 				{/each}
 			{:else}
@@ -603,7 +600,7 @@
 	{/if}
 
 	<!-- BCA Statement Upload + Batch Manager -->
-	<div class="rounded-2xl border border-border bg-card shadow-sm">
+	<div class="glass-card rounded-2xl">
 		<!-- Upload strip -->
 		<form
 			bind:this={uploadFormEl}
@@ -817,7 +814,7 @@
 				></button>
 
 				<!-- Panel -->
-				<div class="absolute left-0 top-full z-40 mt-2 w-72 rounded-2xl border border-border bg-popover p-4 shadow-xl">
+				<div class="absolute left-0 top-full z-40 mt-2 w-72 rounded-2xl border border-white/10 bg-popover/80 p-4 shadow-xl backdrop-blur-xl dark:border-white/10">
 					<div class="grid grid-cols-2 gap-4">
 						<!-- Sort column -->
 						<div>
@@ -884,7 +881,7 @@
 
 			{#if dateMenuOpen}
 				<button class="fixed inset-0 z-30" onclick={() => (dateMenuOpen = false)} aria-label="Close panel"></button>
-				<div class="absolute left-0 top-full z-40 mt-2 w-56 rounded-2xl border border-border bg-popover p-2 shadow-xl">
+				<div class="absolute left-0 top-full z-40 mt-2 w-56 rounded-2xl border border-white/10 bg-popover/80 p-2 shadow-xl backdrop-blur-xl">
 					{#each ([['all', 'All time'], ['thisMonth', 'This month'], ['lastMonth', 'Last month'], ['last7', 'Last 7 days'], ['last30', 'Last 30 days']] as const) as [preset, label]}
 						<button
 							onclick={() => { datePreset = preset; dateMenuOpen = false; }}
@@ -981,8 +978,8 @@
 			{@const expCurrency = data.currencies.find((c) => c.id === exp.currencyId)}
 			{@const bcaType = bcaCardType(exp.importRef)}
 			{@const isIncome = exp.direction === 'income'}
-			<div class="flex items-center gap-3 rounded-2xl border bg-card px-3.5 py-2.5 shadow-sm transition sm:px-4 sm:py-3
-				{selectedIds.has(exp.id) ? 'border-primary ring-1 ring-primary/30' : 'border-border'}
+			<div class="flex items-center gap-3 rounded-2xl border bg-card/80 px-3.5 py-2.5 shadow-sm transition-all duration-200 hover:bg-card hover:shadow-md sm:px-4 sm:py-3
+				{selectedIds.has(exp.id) ? 'border-primary ring-1 ring-primary/30 glow-primary' : 'border-border'}
 				{isIncome ? 'border-l-2 border-l-emerald-500' : ''}">
 
 				<!-- Select checkbox -->
@@ -1070,7 +1067,7 @@
 
 				<!-- Amount -->
 				<div class="shrink-0 text-right">
-					<p class="text-base font-bold {isIncome ? 'text-emerald-600 dark:text-emerald-400' : 'text-card-foreground'}">
+					<p class="tabular text-base font-bold {isIncome ? 'text-emerald-600 dark:text-emerald-400' : 'text-card-foreground'}">
 						{isIncome ? '+' : ''}{formatMoney(exp.amount, expCurrency)}
 					</p>
 					{#if exp.currencyId && exp.currencyId !== data.mainCurrency.id}
@@ -1145,7 +1142,7 @@
 <!-- Floating bulk-action bar -->
 {#if selectedIds.size > 0}
 	<div class="fixed inset-x-0 bottom-4 z-40 flex justify-center px-4">
-		<div class="flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-popover px-3 py-2.5 shadow-xl">
+		<div class="flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-popover/85 px-3 py-2.5 shadow-xl backdrop-blur-xl glow-primary">
 			<span class="pl-1 text-sm font-semibold text-card-foreground">{selectedIds.size} selected</span>
 			<div class="h-5 w-px bg-border"></div>
 			<TagPicker
@@ -1190,7 +1187,7 @@
 <!-- Toast -->
 {#if toast}
 	<div class="fixed inset-x-0 bottom-4 z-50 flex justify-center px-4">
-		<div class="flex items-center gap-3 rounded-2xl border border-border bg-popover px-4 py-2.5 shadow-xl">
+		<div class="flex items-center gap-3 rounded-2xl border border-white/10 bg-popover/85 px-4 py-2.5 shadow-xl backdrop-blur-xl">
 			<span class="text-sm text-card-foreground">{toast.message}</span>
 			{#if toast.undo}
 				<button

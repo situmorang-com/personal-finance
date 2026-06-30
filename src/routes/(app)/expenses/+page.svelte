@@ -407,17 +407,17 @@
 					<div class="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs">
 						<span class="text-muted-foreground">{exp.date}</span>
 
-						<!-- Source type badge -->
+						<!-- Source type badge — outlined with "via" prefix to distinguish from category -->
 						{#if exp.sourceType === 'qr'}
-							<span class="rounded-full bg-violet-500/10 px-2 py-0.5 font-medium text-violet-600 dark:text-violet-400">QR</span>
+							<span class="rounded-full border border-violet-400 px-2 py-0.5 text-xs font-medium text-violet-600 dark:border-violet-500 dark:text-violet-400">via QR</span>
 						{:else if exp.sourceType === 'biffast'}
-							<span class="rounded-full bg-sky-500/10 px-2 py-0.5 font-medium text-sky-600 dark:text-sky-400">BI-Fast</span>
+							<span class="rounded-full border border-sky-400 px-2 py-0.5 text-xs font-medium text-sky-600 dark:border-sky-500 dark:text-sky-400">via BI-Fast</span>
 						{:else if exp.sourceType === 'transfer'}
-							<span class="rounded-full bg-indigo-500/10 px-2 py-0.5 font-medium text-indigo-600 dark:text-indigo-400">Transfer</span>
+							<span class="rounded-full border border-indigo-400 px-2 py-0.5 text-xs font-medium text-indigo-600 dark:border-indigo-500 dark:text-indigo-400">via Transfer</span>
 						{:else if exp.sourceType === 'flazz'}
-							<span class="rounded-full bg-blue-500/10 px-2 py-0.5 font-medium text-blue-600 dark:text-blue-400">Flazz</span>
+							<span class="rounded-full border border-blue-400 px-2 py-0.5 text-xs font-medium text-blue-600 dark:border-blue-500 dark:text-blue-400">via Flazz</span>
 						{:else if exp.sourceType === 'autodebit'}
-							<span class="rounded-full bg-emerald-500/10 px-2 py-0.5 font-medium text-emerald-600 dark:text-emerald-400">Auto</span>
+							<span class="rounded-full border border-emerald-400 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:border-emerald-500 dark:text-emerald-400">via Auto-debit</span>
 						{/if}
 
 						<!-- Category chip -->

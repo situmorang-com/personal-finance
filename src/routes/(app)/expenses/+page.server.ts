@@ -6,7 +6,7 @@ import { ensureDefaultCategories } from '$lib/server/db/categories';
 import { ensureDefaultCurrencies, getMainCurrency, refreshRatesIfStale } from '$lib/server/db/currencies';
 import { and, desc, eq, like, inArray } from 'drizzle-orm';
 import { parseBCAStatement } from '$lib/server/parsers/bca-statement';
-import { guessCategory, ensureCategoryRuleCategories } from '$lib/server/categorizer';
+import { guessCategory, ensureCategoryRuleCategories, learnCategoryAssignment, computeCategorySuggestions } from '$lib/server/categorizer';
 import {
 	getUserTags,
 	getExpenseTagMap,
@@ -16,11 +16,6 @@ import {
 	computeSuggestions,
 	applyAllSuggestions
 } from '$lib/server/tags';
-import {
-	learnCategoryAssignment,
-	computeCategorySuggestions,
-	ensureCategoryRuleCategories
-} from '$lib/server/categorizer';
 
 // ── Insight types ───────────────────────────────────────────────────────────
 type Expense = { id: number; name: string; amount: number; date: string; direction: string; categoryId: number | null };

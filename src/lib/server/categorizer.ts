@@ -78,6 +78,20 @@ export const CATEGORY_RULES: { name: string; color: string; keywords: string[] }
 		'playstation', 'nintendo',
 	]},
 
+	// ── Donation / Giving ────────────────────────────────────────────────────
+	{ name: 'Donation', color: '#f472b6', keywords: [
+		// English
+		'tithe', 'offering', 'donation', 'donate', 'charity', 'contribution', 'alms',
+		// Indonesian — church
+		'perpuluhan', 'persembahan', 'kolekte', 'persembahan khusus',
+		// Indonesian — general giving
+		'dana bantuan', 'dana sosial', 'dana kemanusiaan',
+		'sumbangan', 'donasi', 'sedekah', 'infaq', 'infak',
+		'zakat', 'wakaf', 'fidyah', 'kafarat',
+		// Common remark phrases
+		'bantuan sosial', 'bakti sosial', 'baksos',
+	]},
+
 	// ── Transfer / E-Wallet ──────────────────────────────────────────────────
 	{ name: 'Transfer', color: '#64748b', keywords: [
 		'dana', 'ovo', 'gopay', 'linkaja', 'shopeepay', 'doku',

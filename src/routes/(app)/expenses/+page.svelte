@@ -254,57 +254,69 @@
 		</div>
 	{/if}
 
-	<!-- Insight cards row -->
-	{#if ins.biggestExpense || ins.anomalies.length > 0 || ins.newRecurring.length > 0}
-		<div class="grid grid-cols-3 gap-3">
+	<!-- Insight cards row — always 3 cols -->
+	<div class="grid grid-cols-3 gap-3">
 
-			<!-- Biggest expense -->
+		<!-- Biggest expense -->
+		<div class="rounded-2xl border border-border bg-card p-4">
+			<p class="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+				<span class="text-base">💸</span> Biggest expense
+			</p>
 			{#if ins.biggestExpense}
-				<div class="rounded-2xl border border-border bg-card p-4">
-					<p class="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-						<span class="text-base">💸</span> Biggest expense
-					</p>
-					<p class="truncate font-semibold text-card-foreground">{ins.biggestExpense.name}</p>
-					<p class="mt-0.5 text-xl font-bold text-rose-500">{formatMoney(ins.biggestExpense.amount, data.mainCurrency)}</p>
-					<p class="mt-1 text-xs text-muted-foreground">{ins.biggestExpense.date}</p>
-				</div>
+				<p class="truncate font-semibold text-card-foreground">{ins.biggestExpense.name}</p>
+				<p class="mt-0.5 text-xl font-bold text-rose-500">{formatMoney(ins.biggestExpense.amount, data.mainCurrency)}</p>
+				<p class="mt-1 text-xs text-muted-foreground">{ins.biggestExpense.date}</p>
+			{:else}
+				<p class="text-sm text-muted-foreground">—</p>
 			{/if}
-
-			<!-- Anomalies -->
-			{#if ins.anomalies.length > 0}
-				<div class="rounded-2xl border border-amber-200/50 bg-amber-50/50 p-4 dark:border-amber-700/30 dark:bg-amber-950/20">
-					<p class="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
-						<span class="text-base">⚠️</span> Spending spike
-					</p>
-					{#each ins.anomalies as a (a.categoryName)}
-						<div class="mb-2 last:mb-0">
-							<div class="flex items-center justify-between">
-								<span class="text-sm font-semibold" style="color: {a.color}">{a.categoryName}</span>
-								<span class="text-sm font-bold text-amber-600 dark:text-amber-400">+{a.pctChange}%</span>
-							</div>
-							<p class="text-xs text-muted-foreground">{formatMoney(a.lastMonth, data.mainCurrency)} → {formatMoney(a.thisMonth, data.mainCurrency)}</p>
-						</div>
-					{/each}
-				</div>
-			{/if}
-
-			<!-- New recurring -->
-			{#if ins.newRecurring.length > 0}
-				<div class="rounded-2xl border border-indigo-200/50 bg-indigo-50/50 p-4 dark:border-indigo-700/30 dark:bg-indigo-950/20">
-					<p class="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:text-indigo-400">
-						<span class="text-base">🔄</span> New recurring
-					</p>
-					{#each ins.newRecurring as r (r.name)}
-						<div class="mb-2 last:mb-0">
-							<p class="truncate text-sm font-semibold text-card-foreground">{r.name}</p>
-							<p class="text-xs text-muted-foreground">{r.count}× · avg {formatMoney(r.avgAmount, data.mainCurrency)}</p>
-						</div>
-					{/each}
-				</div>
-			{/if}
-
 		</div>
-	{/if}
+
+		<!-- Anomalies -->
+		<div class="rounded-2xl border p-4
+			{ins.anomalies.length > 0
+				? 'border-amber-200/50 bg-amber-50/50 dark:border-amber-700/30 dark:bg-amber-950/20'
+				: 'border-border bg-card'}">
+			<p class="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide
+				{ins.anomalies.length > 0 ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}">
+				<span class="text-base">⚠️</span> Spending spike
+			</p>
+			{#if ins.anomalies.length > 0}
+				{#each ins.anomalies as a (a.categoryName)}
+					<div class="mb-2 last:mb-0">
+						<div class="flex items-center justify-between">
+							<span class="text-sm font-semibold" style="color: {a.color}">{a.categoryName}</span>
+							<span class="text-sm font-bold text-amber-600 dark:text-amber-400">+{a.pctChange}%</span>
+						</div>
+						<p class="text-xs text-muted-foreground">{formatMoney(a.lastMonth, data.mainCurrency)} → {formatMoney(a.thisMonth, data.mainCurrency)}</p>
+					</div>
+				{/each}
+			{:else}
+				<p class="text-sm text-muted-foreground">No spikes this month</p>
+			{/if}
+		</div>
+
+		<!-- New recurring -->
+		<div class="rounded-2xl border p-4
+			{ins.newRecurring.length > 0
+				? 'border-indigo-200/50 bg-indigo-50/50 dark:border-indigo-700/30 dark:bg-indigo-950/20'
+				: 'border-border bg-card'}">
+			<p class="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide
+				{ins.newRecurring.length > 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-muted-foreground'}">
+				<span class="text-base">🔄</span> New recurring
+			</p>
+			{#if ins.newRecurring.length > 0}
+				{#each ins.newRecurring as r (r.name)}
+					<div class="mb-2 last:mb-0">
+						<p class="truncate text-sm font-semibold text-card-foreground">{r.name}</p>
+						<p class="text-xs text-muted-foreground">{r.count}× · avg {formatMoney(r.avgAmount, data.mainCurrency)}</p>
+					</div>
+				{/each}
+			{:else}
+				<p class="text-sm text-muted-foreground">No new recurring</p>
+			{/if}
+		</div>
+
+	</div>
 	{/if}
 
 	{#if form?.error}

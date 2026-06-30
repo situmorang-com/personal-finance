@@ -75,12 +75,11 @@
 				onkeydown={(e) => e.key === 'Enter' && onSelect?.(seg.label)}
 			>
 				<span class="h-2.5 w-2.5 shrink-0 rounded-full" style="background-color: {seg.color}"></span>
-				<span class="min-w-0 flex-1 truncate text-muted-foreground">{seg.label}</span>
+				<span class="min-w-0 flex-1 truncate text-muted-foreground">
+					{seg.label} <span class="text-xs font-medium text-card-foreground">{Math.round((seg.value / total) * 100)}%</span>
+				</span>
 				{#if formatValue}
-					<span class="shrink-0 text-xs text-muted-foreground">{Math.round((seg.value / total) * 100)}%</span>
 					<span class="shrink-0 font-medium text-card-foreground">{formatValue(seg.value)}</span>
-				{:else}
-					<span class="font-medium text-card-foreground">{Math.round((seg.value / total) * 100)}%</span>
 				{/if}
 			</div>
 		{:else}

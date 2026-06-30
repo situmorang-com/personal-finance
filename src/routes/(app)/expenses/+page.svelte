@@ -165,6 +165,102 @@
 		</button>
 	</div>
 
+	<!-- ── Expense dashboard ────────────────────────────────────────────── -->
+	{#if data.insights}
+	{@const ins = data.insights}
+	{@const vsLast = ins.lastMonth.total > 0 ? Math.round(((ins.thisMonth.total - ins.lastMonth.total) / ins.lastMonth.total) * 100) : null}
+
+	<!-- Summary stat cards -->
+	<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+		<div class="rounded-2xl border border-border bg-card p-4">
+			<p class="text-xs text-muted-foreground">Spent this month</p>
+			<p class="mt-1 text-lg font-bold text-card-foreground">{formatMoney(ins.thisMonth.total, data.mainCurrency)}</p>
+			{#if vsLast !== null}
+				<p class="mt-0.5 text-xs {vsLast > 0 ? 'text-rose-500' : 'text-emerald-500'}">
+					{vsLast > 0 ? '▲' : '▼'} {Math.abs(vsLast)}% vs last month
+				</p>
+			{/if}
+		</div>
+		<div class="rounded-2xl border border-border bg-card p-4">
+			<p class="text-xs text-muted-foreground">Income received</p>
+			<p class="mt-1 text-lg font-bold text-emerald-600 dark:text-emerald-400">{formatMoney(ins.thisMonth.income, data.mainCurrency)}</p>
+			<p class="mt-0.5 text-xs text-muted-foreground">
+				Net {#if ins.thisMonth.income >= ins.thisMonth.total}
+					<span class="text-emerald-500">+{formatMoney(ins.thisMonth.income - ins.thisMonth.total, data.mainCurrency)}</span>
+				{:else}
+					<span class="text-rose-500">-{formatMoney(ins.thisMonth.total - ins.thisMonth.income, data.mainCurrency)}</span>
+				{/if}
+			</p>
+		</div>
+		<div class="rounded-2xl border border-border bg-card p-4">
+			<p class="text-xs text-muted-foreground">Daily average</p>
+			<p class="mt-1 text-lg font-bold text-card-foreground">{formatMoney(ins.thisMonth.dailyAvg, data.mainCurrency)}</p>
+			<p class="mt-0.5 text-xs text-muted-foreground">{ins.thisMonth.txnCount} transactions</p>
+		</div>
+		<div class="rounded-2xl border border-border bg-card p-4">
+			<p class="text-xs text-muted-foreground">Top category</p>
+			{#if ins.topCategory}
+				<p class="mt-1 text-lg font-bold" style="color: {ins.topCategory.color}">{ins.topCategory.name}</p>
+				<p class="mt-0.5 text-xs text-muted-foreground">{ins.topCategory.pct}% of spending</p>
+			{:else}
+				<p class="mt-1 text-sm text-muted-foreground">—</p>
+			{/if}
+		</div>
+	</div>
+
+	<!-- Insight cards row -->
+	{#if ins.biggestExpense || ins.anomalies.length > 0 || ins.newRecurring.length > 0}
+		<div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+
+			<!-- Biggest expense -->
+			{#if ins.biggestExpense}
+				<div class="rounded-2xl border border-border bg-card p-4">
+					<p class="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+						<span class="text-base">💸</span> Biggest expense
+					</p>
+					<p class="truncate font-semibold text-card-foreground">{ins.biggestExpense.name}</p>
+					<p class="mt-0.5 text-xl font-bold text-rose-500">{formatMoney(ins.biggestExpense.amount, data.mainCurrency)}</p>
+					<p class="mt-1 text-xs text-muted-foreground">{ins.biggestExpense.date}</p>
+				</div>
+			{/if}
+
+			<!-- Anomalies -->
+			{#if ins.anomalies.length > 0}
+				<div class="rounded-2xl border border-amber-200/50 bg-amber-50/50 p-4 dark:border-amber-700/30 dark:bg-amber-950/20">
+					<p class="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
+						<span class="text-base">⚠️</span> Spending spike
+					</p>
+					{#each ins.anomalies as a (a.categoryName)}
+						<div class="mb-2 last:mb-0">
+							<div class="flex items-center justify-between">
+								<span class="text-sm font-semibold" style="color: {a.color}">{a.categoryName}</span>
+								<span class="text-sm font-bold text-amber-600 dark:text-amber-400">+{a.pctChange}%</span>
+							</div>
+							<p class="text-xs text-muted-foreground">{formatMoney(a.lastMonth, data.mainCurrency)} → {formatMoney(a.thisMonth, data.mainCurrency)}</p>
+						</div>
+					{/each}
+				</div>
+			{/if}
+
+			<!-- New recurring -->
+			{#if ins.newRecurring.length > 0}
+				<div class="rounded-2xl border border-indigo-200/50 bg-indigo-50/50 p-4 dark:border-indigo-700/30 dark:bg-indigo-950/20">
+					<p class="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:text-indigo-400">
+						<span class="text-base">🔄</span> New recurring
+					</p>
+					{#each ins.newRecurring as r (r.name)}
+						<div class="mb-2 last:mb-0">
+							<p class="truncate text-sm font-semibold text-card-foreground">{r.name}</p>
+							<p class="text-xs text-muted-foreground">{r.count}× · avg {formatMoney(r.avgAmount, data.mainCurrency)}</p>
+						</div>
+					{/each}
+				</div>
+			{/if}
+
+		</div>
+	{/if}
+	{/if}
+
 	{#if form?.error}
 		<p class="rounded-xl bg-destructive/10 px-4 py-2.5 text-sm text-destructive">{form.error}</p>
 	{/if}

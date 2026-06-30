@@ -21,6 +21,126 @@ import {
 	computeCategorySuggestions
 } from '$lib/server/categorizer';
 
+// ── Insight types ───────────────────────────────────────────────────────────
+type Expense = { id: number; name: string; amount: number; date: string; direction: string; categoryId: number | null };
+type Category = { id: number; name: string; color: string };
+
+export type ExpenseInsights = {
+	// Summary stats for current month
+	thisMonth: { total: number; income: number; txnCount: number; dailyAvg: number };
+	lastMonth: { total: number; income: number };
+	// Individual insight cards
+	biggestExpense: { name: string; amount: number; date: string } | null;
+	topCategory: { name: string; color: string; total: number; pct: number } | null;
+	anomalies: { categoryName: string; color: string; thisMonth: number; lastMonth: number; pctChange: number }[];
+	newRecurring: { name: string; count: number; avgAmount: number }[];
+};
+
+function computeInsights(items: Expense[], cats: Category[]): ExpenseInsights {
+	const now = new Date();
+	const thisYM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+	// Last month
+	const lastDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+	const lastYM = `${lastDate.getFullYear()}-${String(lastDate.getMonth() + 1).padStart(2, '0')}`;
+
+	const thisMonthExp = items.filter(e => e.date.startsWith(thisYM));
+	const lastMonthExp = items.filter(e => e.date.startsWith(lastYM));
+
+	// If no current-month data, use the most recent month in the dataset
+	const allMonths = [...new Set(items.map(e => e.date.slice(0, 7)))].sort();
+	const activeYM = thisMonthExp.length > 0 ? thisYM : (allMonths.at(-1) ?? thisYM);
+	const prevYM = (() => {
+		const idx = allMonths.indexOf(activeYM);
+		return idx > 0 ? allMonths[idx - 1] : null;
+	})();
+
+	const active = items.filter(e => e.date.startsWith(activeYM));
+	const prev = prevYM ? items.filter(e => e.date.startsWith(prevYM)) : [];
+
+	const sum = (arr: Expense[], dir: string) => arr.filter(e => e.direction === dir).reduce((s, e) => s + e.amount, 0);
+	const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+	const daysElapsed = activeYM === thisYM ? now.getDate() : daysInMonth;
+
+	const thisTotal = sum(active, 'expense');
+	const thisIncome = sum(active, 'income');
+	const prevTotal = sum(prev, 'expense');
+	const prevIncome = sum(prev, 'income');
+
+	// Biggest single expense
+	const biggest = active
+		.filter(e => e.direction === 'expense')
+		.sort((a, b) => b.amount - a.amount)[0] ?? null;
+
+	// Top category by spend this period
+	const catTotals: Record<number, number> = {};
+	for (const e of active.filter(e => e.direction === 'expense' && e.categoryId)) {
+		catTotals[e.categoryId!] = (catTotals[e.categoryId!] ?? 0) + e.amount;
+	}
+	const topCatId = Object.entries(catTotals).sort((a, b) => +b[1] - +a[1])[0]?.[0];
+	const topCat = topCatId ? cats.find(c => c.id === +topCatId) : null;
+	const topCatTotal = topCatId ? catTotals[+topCatId] : 0;
+
+	// Anomalies: categories where this month > last month by 20%+
+	const prevCatTotals: Record<number, number> = {};
+	for (const e of prev.filter(e => e.direction === 'expense' && e.categoryId)) {
+		prevCatTotals[e.categoryId!] = (prevCatTotals[e.categoryId!] ?? 0) + e.amount;
+	}
+	const anomalies = Object.entries(catTotals)
+		.filter(([catId, total]) => {
+			const prevTotal = prevCatTotals[+catId] ?? 0;
+			return prevTotal > 0 && total > prevTotal * 1.2;
+		})
+		.map(([catId, total]) => {
+			const cat = cats.find(c => c.id === +catId);
+			const prev = prevCatTotals[+catId] ?? 0;
+			return {
+				categoryName: cat?.name ?? 'Unknown',
+				color: cat?.color ?? '#64748b',
+				thisMonth: total,
+				lastMonth: prev,
+				pctChange: Math.round(((total - prev) / prev) * 100)
+			};
+		})
+		.sort((a, b) => b.pctChange - a.pctChange)
+		.slice(0, 3);
+
+	// New recurring: merchant appearing 3+ times this month with consistent amounts
+	const merchantFreq: Record<string, number[]> = {};
+	for (const e of active.filter(e => e.direction === 'expense')) {
+		const key = e.name.trim().toLowerCase();
+		(merchantFreq[key] ??= []).push(e.amount);
+	}
+	// Check which of these appeared in prev month
+	const prevMerchants = new Set(prev.map(e => e.name.trim().toLowerCase()));
+	const newRecurring = Object.entries(merchantFreq)
+		.filter(([key, amounts]) => amounts.length >= 3 && !prevMerchants.has(key))
+		.map(([, amounts]) => {
+			const sample = active.find(e => e.name.trim().toLowerCase() === Object.keys(merchantFreq).find(k => merchantFreq[k] === amounts));
+			return {
+				name: active.find(e => merchantFreq[e.name.trim().toLowerCase()] === amounts)?.name ?? '',
+				count: amounts.length,
+				avgAmount: Math.round(amounts.reduce((s, a) => s + a, 0) / amounts.length)
+			};
+		})
+		.filter(r => r.name)
+		.sort((a, b) => b.count - a.count)
+		.slice(0, 3);
+
+	return {
+		thisMonth: {
+			total: thisTotal,
+			income: thisIncome,
+			txnCount: active.filter(e => e.direction === 'expense').length,
+			dailyAvg: daysElapsed > 0 ? Math.round(thisTotal / daysElapsed) : 0
+		},
+		lastMonth: { total: prevTotal, income: prevIncome },
+		biggestExpense: biggest ? { name: biggest.name, amount: biggest.amount, date: biggest.date } : null,
+		topCategory: topCat ? { name: topCat.name, color: topCat.color, total: topCatTotal, pct: Math.round((topCatTotal / thisTotal) * 100) } : null,
+		anomalies,
+		newRecurring
+	};
+}
+
 export const load: PageServerLoad = async (event) => {
 	const session = await event.locals.auth();
 	if (!session?.user) throw redirect(303, '/login');
@@ -60,6 +180,9 @@ export const load: PageServerLoad = async (event) => {
 	const suggestions = computeSuggestions(userId);
 	const categorySuggestions = computeCategorySuggestions(userId);
 
+	// ── Expense insights ────────────────────────────────────────────────────
+	const insights = computeInsights(items, cats);
+
 	return {
 		expenses: items,
 		categories: cats,
@@ -69,7 +192,8 @@ export const load: PageServerLoad = async (event) => {
 		tags: userTags,
 		expenseTagMap,
 		suggestions,
-		categorySuggestions
+		categorySuggestions,
+		insights
 	};
 };
 

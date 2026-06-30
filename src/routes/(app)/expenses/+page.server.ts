@@ -18,7 +18,8 @@ import {
 } from '$lib/server/tags';
 import {
 	learnCategoryAssignment,
-	computeCategorySuggestions
+	computeCategorySuggestions,
+	ensureCategoryRuleCategories
 } from '$lib/server/categorizer';
 
 // ── Insight types ───────────────────────────────────────────────────────────
@@ -153,6 +154,7 @@ export const load: PageServerLoad = async (event) => {
 	const userId = session.user.id;
 
 	ensureDefaultCategories(userId);
+	ensureCategoryRuleCategories(userId);
 	ensureDefaultCurrencies(userId);
 	await refreshRatesIfStale(userId);
 

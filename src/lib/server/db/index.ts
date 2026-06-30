@@ -54,6 +54,13 @@ sqlite.exec(`
 		weight INTEGER NOT NULL DEFAULT 1
 	);
 	CREATE UNIQUE INDEX IF NOT EXISTS category_rules_uniq ON category_rules(user_id, merchant, category_id);
+	CREATE TABLE IF NOT EXISTS category_keywords (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+		category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+		keyword TEXT NOT NULL
+	);
+	CREATE UNIQUE INDEX IF NOT EXISTS category_keywords_uniq ON category_keywords(user_id, category_id, keyword);
 `);
 
 export const db = drizzle(sqlite, { schema });

@@ -89,6 +89,17 @@ export const tagRules = sqliteTable('tag_rules', {
 });
 
 // Learned rules: "merchant M is usually in category C". Strengthened each time the user assigns C to M.
+export const categoryKeywords = sqliteTable('category_keywords', {
+	id: integer('id').primaryKey({ autoIncrement: true }),
+	userId: text('user_id')
+		.notNull()
+		.references(() => users.id, { onDelete: 'cascade' }),
+	categoryId: integer('category_id')
+		.notNull()
+		.references(() => categories.id, { onDelete: 'cascade' }),
+	keyword: text('keyword').notNull()
+});
+
 export const categoryRules = sqliteTable('category_rules', {
 	id: integer('id').primaryKey({ autoIncrement: true }),
 	userId: text('user_id')

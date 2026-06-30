@@ -6,6 +6,8 @@
 	import MergeIcon from '@lucide/svelte/icons/git-merge';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import XIcon from '@lucide/svelte/icons/x';
+	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
+	import TagIcon from '@lucide/svelte/icons/tag';
 
 	let { data } = $props();
 
@@ -16,6 +18,8 @@
 	let editingCat = $state<Cat | null>(null);
 	let mergingCat = $state<Cat | null>(null);
 	let mergeTarget = $state<number | null>(null);
+	let expandedCatId = $state<number | null>(null);
+	let newKeyword = $state<Record<number, string>>({});
 
 	// ── Tag editing ───────────────────────────────────────────────────────────
 	let editingTag = $state<Tag | null>(null);
@@ -96,13 +100,24 @@
 						<div class="flex shrink-0 items-center gap-1">
 							<button
 								type="button"
-								onclick={() => { editingCat = { ...cat }; mergingCat = null; }}
+								onclick={() => { expandedCatId = expandedCatId === cat.id ? null : cat.id; editingCat = null; mergingCat = null; }}
+								title="Edit keywords"
+								class="flex items-center gap-1 rounded-lg px-1.5 py-1 text-xs text-muted-foreground transition hover:bg-accent hover:text-accent-foreground
+									{expandedCatId === cat.id ? 'bg-accent text-accent-foreground' : ''}"
+							>
+								<TagIcon class="h-3 w-3" />
+								{cat.keywords.length}
+								<ChevronDownIcon class="h-3 w-3 transition-transform {expandedCatId === cat.id ? 'rotate-180' : ''}" />
+							</button>
+							<button
+								type="button"
+								onclick={() => { editingCat = { ...cat }; mergingCat = null; expandedCatId = null; }}
 								title="Rename"
 								class="rounded-lg p-1.5 text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
 							><Pencil class="h-3.5 w-3.5" /></button>
 							<button
 								type="button"
-								onclick={() => { mergingCat = { ...cat }; editingCat = null; }}
+								onclick={() => { mergingCat = { ...cat }; editingCat = null; expandedCatId = null; }}
 								title="Merge into another"
 								class="rounded-lg p-1.5 text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
 							><MergeIcon class="h-3.5 w-3.5" /></button>
@@ -118,6 +133,49 @@
 						</div>
 					{/if}
 				</div>
+
+				<!-- Keywords accordion -->
+				{#if expandedCatId === cat.id}
+					<div class="border-t border-border bg-muted/30 px-4 py-3">
+						<p class="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+							Keywords — matched against merchant name &amp; remark on import
+						</p>
+						<div class="flex flex-wrap gap-1.5">
+							{#each cat.keywords as kw (kw.id)}
+								<form method="POST" action="?/removeKeyword" use:enhance={() => async ({ update }) => { await update(); }}>
+									<input type="hidden" name="id" value={kw.id} />
+									<button
+										type="submit"
+										class="flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-xs text-muted-foreground transition hover:border-destructive hover:text-destructive"
+									>
+										{kw.keyword} <XIcon class="h-2.5 w-2.5" />
+									</button>
+								</form>
+							{/each}
+
+							<!-- Add keyword inline -->
+							<form
+								method="POST"
+								action="?/addKeyword"
+								use:enhance={() => async ({ update }) => { newKeyword[cat.id] = ''; await update(); }}
+								class="flex items-center gap-1"
+							>
+								<input type="hidden" name="categoryId" value={cat.id} />
+								<input
+									bind:value={newKeyword[cat.id]}
+									name="keyword"
+									placeholder="Add keyword…"
+									class="w-32 rounded-full border border-dashed border-border bg-background px-2.5 py-0.5 text-xs placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none"
+								/>
+								<button
+									type="submit"
+									disabled={!newKeyword[cat.id]?.trim()}
+									class="rounded-full bg-primary px-2.5 py-0.5 text-xs font-medium text-primary-foreground disabled:opacity-40"
+								>Add</button>
+							</form>
+						</div>
+					</div>
+				{/if}
 			{/each}
 
 			{#if data.categories.length === 0}

@@ -6,7 +6,7 @@ import { ensureDefaultCategories } from '$lib/server/db/categories';
 import { ensureDefaultCurrencies, getMainCurrency, refreshRatesIfStale } from '$lib/server/db/currencies';
 import { and, desc, eq, like, inArray } from 'drizzle-orm';
 import { parseBCAStatement } from '$lib/server/parsers/bca-statement';
-import { guessCategory, ensureCategoryRuleCategories, learnCategoryAssignment, computeCategorySuggestions } from '$lib/server/categorizer';
+import { guessCategory, loadKeywordRules, ensureCategoryRuleCategories, learnCategoryAssignment, computeCategorySuggestions } from '$lib/server/categorizer';
 import {
 	getUserTags,
 	getExpenseTagMap,
@@ -305,6 +305,9 @@ export const actions: Actions = {
 			const cardType = (form.get('cardType')?.toString() || 'debit').replace(/[^a-z]/g, '');
 			const importId = `bca-${cardType}-${Date.now()}`;
 
+			// Load keyword rules once for the whole batch
+			const keywordRules = loadKeywordRules(userId);
+
 			// Insert ALL transactions (income + expenses), deduplicated
 			let inserted = 0;
 			for (const tx of transactions) {
@@ -317,7 +320,7 @@ export const actions: Actions = {
 					)).get();
 
 				if (!existing) {
-					const guessedName = guessCategory(tx.merchant, tx.remark, tx.rawType);
+					const guessedName = guessCategory(tx.merchant, tx.remark, tx.rawType, keywordRules);
 					const categoryId = guessedName
 						? (categoryMap.get(guessedName) ?? categoryMap.get('Bank') ?? null)
 						: (categoryMap.get('Bank') ?? null);

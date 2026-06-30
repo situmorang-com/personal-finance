@@ -170,45 +170,99 @@ export const CATEGORY_RULES: { name: string; color: string; keywords: string[] }
 	]},
 ];
 
-/**
- * Returns the category name that best matches the given strings (merchant, remark, rawType).
- * Returns null if no rule matches.
- */
-export function guessCategory(merchant: string, remark: string | null, rawType: string): string | null {
-	const haystack = [merchant, remark, rawType]
-		.filter(Boolean)
-		.join(' ')
-		.toLowerCase();
+import { db } from '$lib/server/db';
+import { categories, categoryKeywords } from '$lib/server/db/schema';
+import { and, eq } from 'drizzle-orm';
 
-	for (const rule of CATEGORY_RULES) {
-		if (rule.keywords.some((kw) => haystack.includes(kw))) {
-			return rule.name;
-		}
+export type KeywordRule = { name: string; keywords: string[] };
+
+/**
+ * Load keyword rules from DB for a user.
+ * Each entry maps a category name to its list of keywords (order matches CATEGORY_RULES order for priority).
+ */
+export function loadKeywordRules(userId: string): KeywordRule[] {
+	const cats = db.select().from(categories).where(eq(categories.userId, userId)).all();
+	const kws = db.select().from(categoryKeywords).where(eq(categoryKeywords.userId, userId)).all();
+
+	// Build map: categoryId → keywords[]
+	const kwMap = new Map<number, string[]>();
+	for (const kw of kws) {
+		const arr = kwMap.get(kw.categoryId) ?? [];
+		arr.push(kw.keyword);
+		kwMap.set(kw.categoryId, arr);
+	}
+
+	// Return in CATEGORY_RULES priority order first, then any extra user categories
+	const ruleNames = CATEGORY_RULES.map((r) => r.name);
+	const sorted = [
+		...cats.filter((c) => ruleNames.includes(c.name)),
+		...cats.filter((c) => !ruleNames.includes(c.name))
+	].sort((a, b) => {
+		const ai = ruleNames.indexOf(a.name);
+		const bi = ruleNames.indexOf(b.name);
+		if (ai === -1 && bi === -1) return a.name.localeCompare(b.name);
+		if (ai === -1) return 1;
+		if (bi === -1) return -1;
+		return ai - bi;
+	});
+
+	return sorted.map((c) => ({ name: c.name, keywords: kwMap.get(c.id) ?? [] }));
+}
+
+/**
+ * Returns the category name that best matches the given strings.
+ * Pass rules from loadKeywordRules() — load once per import batch, not per transaction.
+ */
+export function guessCategory(
+	merchant: string,
+	remark: string | null,
+	rawType: string,
+	rules: KeywordRule[]
+): string | null {
+	const haystack = [merchant, remark, rawType].filter(Boolean).join(' ').toLowerCase();
+	for (const rule of rules) {
+		if (rule.keywords.some((kw) => haystack.includes(kw))) return rule.name;
 	}
 	return null;
 }
 
 /**
- * Ensure all CATEGORY_RULES categories exist for the user in the DB.
+ * Ensure all CATEGORY_RULES categories exist for the user in the DB,
+ * and seed their default keywords if they have none yet.
  * Returns a map of category name → id.
  */
-import { db } from '$lib/server/db';
-import { categories } from '$lib/server/db/schema';
-import { and, eq } from 'drizzle-orm';
-
 export function ensureCategoryRuleCategories(userId: string): Map<string, number> {
 	const existing = db.select().from(categories).where(eq(categories.userId, userId)).all();
 	const map = new Map<string, number>(existing.map((c) => [c.name, c.id]));
 
 	for (const rule of CATEGORY_RULES) {
-		if (!map.has(rule.name)) {
+		let catId = map.get(rule.name);
+
+		if (!catId) {
 			db.insert(categories).values({ userId, name: rule.name, color: rule.color }).run();
 			const inserted = db
 				.select()
 				.from(categories)
 				.where(and(eq(categories.userId, userId), eq(categories.name, rule.name)))
 				.get();
-			if (inserted) map.set(rule.name, inserted.id);
+			if (inserted) { map.set(rule.name, inserted.id); catId = inserted.id; }
+		}
+
+		if (!catId) continue;
+
+		// Seed default keywords only if this category has none yet
+		const hasKeywords = db
+			.select()
+			.from(categoryKeywords)
+			.where(and(eq(categoryKeywords.userId, userId), eq(categoryKeywords.categoryId, catId)))
+			.get();
+
+		if (!hasKeywords) {
+			for (const kw of rule.keywords) {
+				try {
+					db.insert(categoryKeywords).values({ userId, categoryId: catId, keyword: kw }).run();
+				} catch { /* duplicate — ignore */ }
+			}
 		}
 	}
 	return map;

@@ -7,7 +7,6 @@
 	import { PAYMENT_METHODS, type PaymentMethod } from '$lib/payments';
 	import * as Sheet from '$lib/components/ui/sheet/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
-	import { Progress } from '$lib/components/ui/progress/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import MoreHorizontal from '@lucide/svelte/icons/ellipsis';
@@ -16,6 +15,11 @@
 	import PauseCircle from '@lucide/svelte/icons/pause-circle';
 	import PlayCircle from '@lucide/svelte/icons/play-circle';
 	import SearchIcon from '@lucide/svelte/icons/search';
+	import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
+	import ArrowUpIcon from '@lucide/svelte/icons/arrow-up';
+	import ArrowDownIcon from '@lucide/svelte/icons/arrow-down';
+	import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
+	import FlaskConicalIcon from '@lucide/svelte/icons/flask-conical';
 
 	let { data, form } = $props();
 
@@ -24,6 +28,29 @@
 	let sheetOpen = $state(false);
 	let editing = $state<Sub | null>(null);
 	let search = $state('');
+
+	// ── Sort & filter ────────────────────────────────────────────────────────
+	type SortField = 'renewal' | 'price' | 'name';
+	type StatusFilter = 'all' | 'active' | 'paused' | 'trial';
+
+	let sortField = $state<SortField>('renewal');
+	let sortDir = $state<'asc' | 'desc'>('asc');
+	let statusFilter = $state<StatusFilter>('all');
+	let filterCategoryId = $state<number | null>(null);
+	let sortPanelOpen = $state(false);
+
+	const isNonDefault = $derived(
+		sortField !== 'renewal' || sortDir !== 'asc' || statusFilter !== 'all' || filterCategoryId !== null
+	);
+
+	function toggleSort(field: SortField) {
+		if (sortField === field) sortDir = sortDir === 'desc' ? 'asc' : 'desc';
+		else { sortField = field; sortDir = field === 'renewal' ? 'asc' : 'desc'; }
+	}
+
+	function resetFilters() {
+		sortField = 'renewal'; sortDir = 'asc'; statusFilter = 'all'; filterCategoryId = null;
+	}
 
 	const paymentLabels: Record<PaymentMethod, string> = {
 		paypal: 'PayPal', visa: 'Visa', mastercard: 'Mastercard', amex: 'Amex',
@@ -65,11 +92,33 @@
 		return Math.ceil(diff / 86400000);
 	}
 
-	const filtered = $derived(
-		data.subscriptions.filter((s) =>
-			!search || s.name.toLowerCase().includes(search.toLowerCase())
-		)
-	);
+	function progressColor(days: number) {
+		if (days <= 3) return '#f43f5e';
+		if (days <= 7) return '#f59e0b';
+		return 'var(--primary)';
+	}
+
+	const filtered = $derived.by(() => {
+		let arr = data.subscriptions.filter((s) => {
+			if (search && !s.name.toLowerCase().includes(search.toLowerCase())) return false;
+			if (statusFilter === 'active' && !s.active) return false;
+			if (statusFilter === 'paused' && s.active) return false;
+			if (statusFilter === 'trial' && !s.isTrial) return false;
+			if (filterCategoryId !== null && s.categoryId !== filterCategoryId) return false;
+			return true;
+		});
+		arr = [...arr].sort((a, b) => {
+			let cmp = 0;
+			if (sortField === 'renewal') cmp = a.nextRenewal.localeCompare(b.nextRenewal);
+			else if (sortField === 'price') {
+				const aAmt = convertToMain(monthlyCost(a.price, a.billingCycle), a.currencyId, data.currencies, data.mainCurrency);
+				const bAmt = convertToMain(monthlyCost(b.price, b.billingCycle), b.currencyId, data.currencies, data.mainCurrency);
+				cmp = aAmt - bAmt;
+			} else cmp = a.name.localeCompare(b.name);
+			return sortDir === 'asc' ? cmp : -cmp;
+		});
+		return arr;
+	});
 
 	const activeSubs = $derived(data.subscriptions.filter((s) => s.active));
 	const monthlyTotal = $derived(
@@ -79,6 +128,10 @@
 		)
 	);
 	const yearlyTotal = $derived(monthlyTotal * 12);
+	const dueThisWeek = $derived(activeSubs.filter((s) => { const d = daysUntil(s.nextRenewal); return d >= 0 && d <= 7; }));
+	const dueThisWeekTotal = $derived(
+		dueThisWeek.reduce((sum, s) => sum + convertToMain(s.price, s.currencyId, data.currencies, data.mainCurrency), 0)
+	);
 </script>
 
 <div class="space-y-5">
@@ -86,10 +139,7 @@
 	<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 		<div>
 			<h1 class="text-2xl font-bold text-foreground">Subscriptions</h1>
-			<p class="text-sm text-muted-foreground">
-				{activeSubs.length} active · {formatMoney(monthlyTotal, data.mainCurrency)}/mo ·
-				{formatMoney(yearlyTotal, data.mainCurrency)}/yr
-			</p>
+			<p class="text-sm text-muted-foreground">Track and manage your recurring payments.</p>
 		</div>
 		<button
 			onclick={openAdd}
@@ -104,18 +154,113 @@
 		<p class="rounded-xl bg-destructive/10 px-4 py-2.5 text-sm text-destructive">{form.error}</p>
 	{/if}
 
-	<!-- Search -->
-	<div class="relative">
-		<SearchIcon class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-		<input
-			bind:value={search}
-			placeholder="Search subscriptions..."
-			class="w-full rounded-xl border border-border bg-background py-2.5 pl-9 pr-4 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 sm:max-w-xs"
-		/>
+	<!-- Summary stat cards -->
+	<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+		<div class="glass-card glass-card-hover rounded-2xl p-4">
+			<p class="text-xs text-muted-foreground">Active</p>
+			<p class="tabular mt-1 text-lg font-bold text-card-foreground">{activeSubs.length}</p>
+		</div>
+		<div class="glass-card glass-card-hover rounded-2xl p-4">
+			<p class="text-xs text-muted-foreground">Monthly cost</p>
+			<p class="tabular mt-1 text-lg font-bold text-card-foreground">{formatMoney(monthlyTotal, data.mainCurrency)}</p>
+		</div>
+		<div class="glass-card glass-card-hover rounded-2xl p-4">
+			<p class="text-xs text-muted-foreground">Yearly cost</p>
+			<p class="tabular mt-1 text-lg font-bold text-card-foreground">{formatMoney(yearlyTotal, data.mainCurrency)}</p>
+		</div>
+		<div class="glass-card glass-card-hover rounded-2xl p-4 {dueThisWeek.length > 0 ? 'drop-shadow-[0_0_16px_rgba(245,158,11,0.15)]' : ''}">
+			<p class="text-xs text-muted-foreground">Due this week</p>
+			<p class="tabular mt-1 text-lg font-bold {dueThisWeek.length > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-card-foreground'}">
+				{formatMoney(dueThisWeekTotal, data.mainCurrency)}
+			</p>
+			{#if dueThisWeek.length > 0}<p class="mt-0.5 text-xs text-muted-foreground">{dueThisWeek.length} renewal{dueThisWeek.length !== 1 ? 's' : ''}</p>{/if}
+		</div>
+	</div>
+
+	<!-- Search + Sort/Filter -->
+	<div class="flex flex-wrap items-center gap-2">
+		<div class="relative">
+			<SearchIcon class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+			<input
+				bind:value={search}
+				placeholder="Search subscriptions..."
+				class="w-full rounded-xl border border-border bg-background py-2.5 pl-9 pr-4 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 sm:max-w-xs"
+			/>
+		</div>
+
+		<div class="relative">
+			<button
+				onclick={() => (sortPanelOpen = !sortPanelOpen)}
+				class="relative flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium transition
+					{sortPanelOpen ? 'border-primary bg-primary/5 text-primary' : 'border-border bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground'}"
+			>
+				<SlidersHorizontal class="h-4 w-4" />
+				<span>Sort & Filter</span>
+				{#if isNonDefault}
+					<span class="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-amber-400 ring-2 ring-background"></span>
+				{/if}
+			</button>
+
+			{#if sortPanelOpen}
+				<button class="fixed inset-0 z-30" onclick={() => (sortPanelOpen = false)} aria-label="Close panel"></button>
+				<div class="absolute left-0 top-full z-40 mt-2 w-72 rounded-2xl border border-white/10 bg-popover/80 p-4 shadow-xl backdrop-blur-xl">
+					<div class="grid grid-cols-2 gap-4">
+						<div>
+							<p class="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Sort by</p>
+							<div class="space-y-0.5">
+								{#each ([['renewal', 'Renewal'], ['price', 'Price'], ['name', 'Name']] as const) as [field, label]}
+									<button
+										onclick={() => toggleSort(field)}
+										class="flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-sm transition
+											{sortField === field ? 'bg-primary/10 font-semibold text-primary' : 'text-card-foreground hover:bg-accent'}"
+									>
+										<span>{label}</span>
+										{#if sortField === field}
+											{#if sortDir === 'desc'}<ArrowDownIcon class="h-3.5 w-3.5" />{:else}<ArrowUpIcon class="h-3.5 w-3.5" />{/if}
+										{/if}
+									</button>
+								{/each}
+							</div>
+						</div>
+						<div>
+							<p class="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Status</p>
+							<div class="space-y-0.5">
+								{#each ([['all', 'All'], ['active', 'Active'], ['paused', 'Paused'], ['trial', 'Trial']] as const) as [s, label]}
+									<button
+										onclick={() => (statusFilter = s)}
+										class="flex w-full items-center rounded-lg px-2.5 py-1.5 text-sm transition
+											{statusFilter === s ? 'bg-primary/10 font-semibold text-primary' : 'text-card-foreground hover:bg-accent'}"
+									>{label}</button>
+								{/each}
+							</div>
+						</div>
+					</div>
+
+					<div class="mt-3 border-t border-border pt-3">
+						<p class="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Category</p>
+						<select
+							bind:value={filterCategoryId}
+							class="w-full rounded-lg border border-input bg-background px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring/50"
+						>
+							<option value={null}>All categories</option>
+							{#each data.categories as cat (cat.id)}
+								<option value={cat.id}>{cat.name}</option>
+							{/each}
+						</select>
+					</div>
+
+					{#if isNonDefault}
+						<div class="mt-3 border-t border-border pt-3">
+							<button onclick={resetFilters} class="text-xs text-muted-foreground transition hover:text-foreground">Reset to defaults</button>
+						</div>
+					{/if}
+				</div>
+			{/if}
+		</div>
 	</div>
 
 	<!-- List -->
-	<div class="space-y-2.5">
+	<div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
 		{#each filtered as sub, i (sub.id)}
 			{@const cat = data.categories.find((c) => c.id === sub.categoryId)}
 			{@const subCurrency = data.currencies.find((c) => c.id === sub.currencyId)}
@@ -139,6 +284,11 @@
 							<p class="font-semibold text-card-foreground">{sub.name}</p>
 							{#if !sub.active}
 								<Badge variant="secondary">Paused</Badge>
+							{/if}
+							{#if sub.isTrial}
+								<span class="flex items-center gap-1 rounded-full bg-violet-500/10 px-2 py-0.5 text-xs font-medium text-violet-600 dark:text-violet-400">
+									<FlaskConicalIcon class="h-3 w-3" /> Trial
+								</span>
 							{/if}
 						</div>
 						<div class="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs">
@@ -195,6 +345,15 @@
 								<Pencil class="mr-2 h-4 w-4" />
 								Edit
 							</DropdownMenu.Item>
+							{#if sub.cancelUrl}
+								<DropdownMenu.Item>
+									{#snippet child({ props })}
+										<a {...props} href={sub.cancelUrl} target="_blank" rel="noopener noreferrer" class="flex w-full items-center">
+											<ExternalLinkIcon class="mr-2 h-4 w-4" /> Cancel subscription
+										</a>
+									{/snippet}
+								</DropdownMenu.Item>
+							{/if}
 							<form method="POST" action="?/update" use:enhance>
 								<input type="hidden" name="id" value={sub.id} />
 								<input type="hidden" name="name" value={sub.name} />
@@ -206,6 +365,8 @@
 								<input type="hidden" name="website" value={sub.website ?? ''} />
 								<input type="hidden" name="paymentMethod" value={sub.paymentMethod ?? ''} />
 								<input type="hidden" name="notes" value={sub.notes ?? ''} />
+								<input type="hidden" name="cancelUrl" value={sub.cancelUrl ?? ''} />
+								<input type="hidden" name="isTrial" value={sub.isTrial ? 'on' : ''} />
 								<input type="hidden" name="active" value={sub.active ? '' : 'on'} />
 								<DropdownMenu.Item>
 									{#snippet child({ props })}
@@ -236,11 +397,17 @@
 
 				<!-- Billing cycle progress (how far into the current period) -->
 				{#if sub.active}
-					<Progress value={progress} class="h-1 rounded-none bg-muted/50" />
+					{@const pColor = progressColor(days)}
+					<div class="h-1 w-full overflow-hidden bg-muted/50">
+						<div
+							class="h-full transition-all duration-500"
+							style="width: {progress}%; background-color: {pColor}; box-shadow: 0 0 6px 0 {pColor}99;"
+						></div>
+					</div>
 				{/if}
 			</div>
 		{:else}
-			<div class="rounded-2xl border border-dashed border-border bg-card py-16 text-center">
+			<div class="rounded-2xl border border-dashed border-border bg-card py-16 text-center lg:col-span-2">
 				<p class="text-muted-foreground">
 					{search ? 'No subscriptions match your search.' : 'No subscriptions yet.'}
 				</p>
@@ -296,6 +463,27 @@
 					placeholder="netflix.com"
 					class="rounded-xl border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/50"
 				/>
+			</label>
+
+			<label class="flex flex-col gap-1.5 text-sm font-medium">
+				Cancel URL <span class="text-xs font-normal text-muted-foreground">(direct link to cancel)</span>
+				<input
+					name="cancelUrl"
+					type="url"
+					value={editing?.cancelUrl ?? ''}
+					placeholder="https://netflix.com/cancelplan"
+					class="rounded-xl border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/50"
+				/>
+			</label>
+
+			<label class="flex items-center gap-2.5 text-sm font-medium">
+				<input
+					type="checkbox"
+					name="isTrial"
+					checked={editing?.isTrial ?? false}
+					class="h-4 w-4 rounded border-border"
+				/>
+				This is a free trial
 			</label>
 
 			<div class="grid grid-cols-2 gap-3">

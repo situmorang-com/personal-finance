@@ -53,6 +53,8 @@ export const actions: Actions = {
 		const website = form.get('website')?.toString().trim() || null;
 		const paymentMethod = readPaymentMethod(form);
 		const notes = form.get('notes')?.toString() || null;
+		const cancelUrl = form.get('cancelUrl')?.toString().trim() || null;
+		const isTrial = form.get('isTrial') === 'on';
 
 		if (!name || !nextRenewal || Number.isNaN(price) || price < 0) {
 			return fail(400, { error: 'Please fill in all required fields.' });
@@ -69,7 +71,9 @@ export const actions: Actions = {
 				currencyId,
 				website,
 				paymentMethod,
-				notes
+				notes,
+				cancelUrl,
+				isTrial
 			})
 			.run();
 
@@ -97,6 +101,8 @@ export const actions: Actions = {
 		const paymentMethod = readPaymentMethod(form);
 		const notes = form.get('notes')?.toString() || null;
 		const active = form.get('active') === 'on';
+		const cancelUrl = form.get('cancelUrl')?.toString().trim() || null;
+		const isTrial = form.get('isTrial') === 'on';
 
 		if (!id || !name || !nextRenewal || Number.isNaN(price) || price < 0) {
 			return fail(400, { error: 'Please fill in all required fields.' });
@@ -113,7 +119,9 @@ export const actions: Actions = {
 				website,
 				paymentMethod,
 				notes,
-				active
+				active,
+				cancelUrl,
+				isTrial
 			})
 			.where(and(eq(subscriptions.id, id), eq(subscriptions.userId, userId)))
 			.run();

@@ -50,6 +50,8 @@ export const subscriptions = sqliteTable('subscriptions', {
 		.default('monthly'),
 	nextRenewal: text('next_renewal').notNull(),
 	notes: text('notes'),
+	cancelUrl: text('cancel_url'),
+	isTrial: integer('is_trial', { mode: 'boolean' }).notNull().default(false),
 	active: integer('active', { mode: 'boolean' }).notNull().default(true),
 	createdAt: text('created_at')
 		.notNull()

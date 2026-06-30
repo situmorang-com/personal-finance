@@ -15,6 +15,9 @@
 	import SearchIcon from '@lucide/svelte/icons/search';
 	import SparklesIcon from '@lucide/svelte/icons/sparkles';
 	import XIcon from '@lucide/svelte/icons/x';
+	import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
+	import ArrowUpIcon from '@lucide/svelte/icons/arrow-up';
+	import ArrowDownIcon from '@lucide/svelte/icons/arrow-down';
 
 	let { data, form } = $props();
 
@@ -141,6 +144,84 @@
 	const filterCategoryName = $derived(
 		filterCategoryId !== null ? data.categories.find((c) => c.id === filterCategoryId)?.name ?? null : null
 	);
+
+	// ── Sort & Group ─────────────────────────────────────────────────────────
+	type SortField = 'date' | 'amount' | 'name';
+	type GroupBy = 'none' | 'date' | 'category' | 'month';
+
+	let sortField = $state<SortField>('date');
+	let sortDir = $state<'asc' | 'desc'>('desc');
+	let groupBy = $state<GroupBy>('none');
+	let sortPanelOpen = $state(false);
+
+	const isNonDefault = $derived(sortField !== 'date' || sortDir !== 'desc' || groupBy !== 'none');
+
+	function toggleSort(field: SortField) {
+		if (sortField === field) sortDir = sortDir === 'desc' ? 'asc' : 'desc';
+		else { sortField = field; sortDir = field === 'date' ? 'desc' : 'asc'; }
+	}
+
+	const sorted = $derived.by(() => {
+		const arr = [...filtered];
+		arr.sort((a, b) => {
+			let cmp = 0;
+			if (sortField === 'date') cmp = a.date.localeCompare(b.date);
+			else if (sortField === 'amount') {
+				const aAmt = convertToMain(a.amount, a.currencyId, data.currencies, data.mainCurrency);
+				const bAmt = convertToMain(b.amount, b.currencyId, data.currencies, data.mainCurrency);
+				cmp = aAmt - bAmt;
+			} else cmp = a.name.localeCompare(b.name);
+			return sortDir === 'asc' ? cmp : -cmp;
+		});
+		return arr;
+	});
+
+	type Group = { key: string; label: string; color?: string; items: typeof sorted; total: number; income: number };
+
+	const grouped = $derived.by(() => {
+		if (groupBy === 'none') return [{ key: 'all', label: '', color: undefined, items: sorted, total: 0, income: 0 }];
+
+		const map = new Map<string, Group>();
+
+		const today = new Date().toISOString().slice(0, 10);
+		const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+		const weekAgo = new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10);
+		const thisMonthYM = today.slice(0, 7);
+		const prevDate = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
+		const prevMonthYM = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
+
+		for (const exp of sorted) {
+			let key: string;
+			let label: string;
+			let color: string | undefined;
+
+			if (groupBy === 'date') {
+				if (exp.date === today)          { key = '0-today';     label = 'Today'; }
+				else if (exp.date === yesterday) { key = '1-yesterday'; label = 'Yesterday'; }
+				else if (exp.date >= weekAgo)    { key = '2-thisweek';  label = 'This week'; }
+				else if (exp.date.startsWith(thisMonthYM)) { key = '3-thismonth'; label = 'This month'; }
+				else if (exp.date.startsWith(prevMonthYM)) { key = '4-lastmonth'; label = 'Last month'; }
+				else { key = '5-' + exp.date.slice(0, 7); label = new Date(exp.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', year: 'numeric' }); }
+			} else if (groupBy === 'month') {
+				key = exp.date.slice(0, 7);
+				label = new Date(exp.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+			} else {
+				const cat = data.categories.find((c) => c.id === exp.categoryId);
+				key = cat ? String(cat.id) : 'z-uncategorized';
+				label = cat?.name ?? 'Uncategorized';
+				color = cat?.color;
+			}
+
+			if (!map.has(key)) map.set(key, { key, label, color, items: [], total: 0, income: 0 });
+			const g = map.get(key)!;
+			g.items.push(exp);
+			const amt = convertToMain(exp.amount, exp.currencyId, data.currencies, data.mainCurrency);
+			if (exp.direction === 'income') g.income += amt;
+			else g.total += amt;
+		}
+
+		return [...map.values()].sort((a, b) => a.key.localeCompare(b.key));
+	});
 
 	const totalExpenses = $derived(
 		data.expenses
@@ -516,6 +597,7 @@
 	{/if}
 
 	<div class="flex flex-wrap items-center gap-2">
+		<!-- Search -->
 		<div class="relative">
 			<SearchIcon class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 			<input
@@ -524,6 +606,85 @@
 				class="w-full rounded-xl border border-border bg-background py-2.5 pl-9 pr-4 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 sm:max-w-xs"
 			/>
 		</div>
+
+		<!-- Sort & Group button -->
+		<div class="relative">
+			<button
+				onclick={() => (sortPanelOpen = !sortPanelOpen)}
+				class="relative flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium transition
+					{sortPanelOpen ? 'border-primary bg-primary/5 text-primary' : 'border-border bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground'}"
+			>
+				<SlidersHorizontal class="h-4 w-4" />
+				<span>Sort & Group</span>
+				{#if isNonDefault}
+					<span class="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-amber-400 ring-2 ring-background"></span>
+				{/if}
+			</button>
+
+			{#if sortPanelOpen}
+				<!-- Backdrop -->
+				<button
+					class="fixed inset-0 z-30"
+					onclick={() => (sortPanelOpen = false)}
+					aria-label="Close panel"
+				></button>
+
+				<!-- Panel -->
+				<div class="absolute left-0 top-full z-40 mt-2 w-72 rounded-2xl border border-border bg-popover p-4 shadow-xl">
+					<div class="grid grid-cols-2 gap-4">
+						<!-- Sort column -->
+						<div>
+							<p class="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Sort by</p>
+							<div class="space-y-0.5">
+								{#each ([['date', 'Date'], ['amount', 'Amount'], ['name', 'Name']] as const) as [field, label]}
+									<button
+										onclick={() => toggleSort(field)}
+										class="flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-sm transition
+											{sortField === field ? 'bg-primary/10 font-semibold text-primary' : 'text-card-foreground hover:bg-accent'}"
+									>
+										<span>{label}</span>
+										{#if sortField === field}
+											{#if sortDir === 'desc'}
+												<ArrowDownIcon class="h-3.5 w-3.5" />
+											{:else}
+												<ArrowUpIcon class="h-3.5 w-3.5" />
+											{/if}
+										{/if}
+									</button>
+								{/each}
+							</div>
+						</div>
+
+						<!-- Group column -->
+						<div>
+							<p class="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Group by</p>
+							<div class="space-y-0.5">
+								{#each ([['none', 'None'], ['date', 'Date'], ['month', 'Month'], ['category', 'Category']] as const) as [g, label]}
+									<button
+										onclick={() => (groupBy = g)}
+										class="flex w-full items-center rounded-lg px-2.5 py-1.5 text-sm transition
+											{groupBy === g ? 'bg-primary/10 font-semibold text-primary' : 'text-card-foreground hover:bg-accent'}"
+									>
+										{label}
+									</button>
+								{/each}
+							</div>
+						</div>
+					</div>
+
+					{#if isNonDefault}
+						<div class="mt-3 border-t border-border pt-3">
+							<button
+								onclick={() => { sortField = 'date'; sortDir = 'desc'; groupBy = 'none'; }}
+								class="text-xs text-muted-foreground hover:text-foreground transition"
+							>Reset to defaults</button>
+						</div>
+					{/if}
+				</div>
+			{/if}
+		</div>
+
+		<!-- Active category filter chip -->
 		{#if filterCategoryName}
 			{@const filterCat2 = data.categories.find((c) => c.id === filterCategoryId)}
 			<button
@@ -538,7 +699,28 @@
 	</div>
 
 	<div class="space-y-2">
-		{#each filtered as exp (exp.id)}
+		{#each grouped as group (group.key)}
+			{#if groupBy !== 'none' && group.label}
+				<div class="flex items-center gap-3 px-1 pt-3 first:pt-0">
+					<div class="flex items-center gap-2">
+						{#if group.color}
+							<span class="h-2 w-2 rounded-full" style="background-color: {group.color}"></span>
+						{/if}
+						<span class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{group.label}</span>
+					</div>
+					<div class="h-px flex-1 bg-border"></div>
+					<div class="flex items-center gap-2 text-xs text-muted-foreground">
+						<span>{group.items.length} txn{group.items.length !== 1 ? 's' : ''}</span>
+						{#if group.total > 0}
+							<span class="font-medium text-card-foreground">−{formatMoney(group.total, data.mainCurrency)}</span>
+						{/if}
+						{#if group.income > 0}
+							<span class="font-medium text-emerald-600">+{formatMoney(group.income, data.mainCurrency)}</span>
+						{/if}
+					</div>
+				</div>
+			{/if}
+		{#each group.items as exp (exp.id)}
 			{@const cat = data.categories.find((c) => c.id === exp.categoryId)}
 			{@const expCurrency = data.currencies.find((c) => c.id === exp.currencyId)}
 			{@const bcaType = bcaCardType(exp.importRef)}
@@ -672,18 +854,21 @@
 					</DropdownMenu.Content>
 				</DropdownMenu.Root>
 			</div>
-		{:else}
+		{/each}
+		{/each}
+
+		{#if sorted.length === 0}
 			<div class="rounded-2xl border border-dashed border-border bg-card py-16 text-center">
 				<p class="text-muted-foreground">
-					{search ? 'No expenses match your search.' : 'No expenses logged yet.'}
+					{search || filterCategoryId ? 'No expenses match your filters.' : 'No expenses logged yet.'}
 				</p>
-				{#if !search}
+				{#if !search && !filterCategoryId}
 					<button onclick={openAdd} class="mt-3 text-sm font-medium text-primary hover:underline">
 						Log your first expense →
 					</button>
 				{/if}
 			</div>
-		{/each}
+		{/if}
 	</div>
 
 	<!-- Spacer so the floating bar never covers the last row -->

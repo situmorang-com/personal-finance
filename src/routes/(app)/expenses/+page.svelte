@@ -543,7 +543,7 @@
 			{@const expCurrency = data.currencies.find((c) => c.id === exp.currencyId)}
 			{@const bcaType = bcaCardType(exp.importRef)}
 			{@const isIncome = exp.direction === 'income'}
-			<div class="flex items-center gap-3 rounded-2xl border bg-card p-3.5 shadow-sm transition sm:gap-4 sm:p-4
+			<div class="flex items-center gap-3 rounded-2xl border bg-card px-3.5 py-2.5 shadow-sm transition sm:px-4 sm:py-3
 				{selectedIds.has(exp.id) ? 'border-primary ring-1 ring-primary/30' : 'border-border'}
 				{isIncome ? 'border-l-2 border-l-emerald-500' : ''}">
 
@@ -557,10 +557,10 @@
 
 				<!-- Avatar -->
 				{#if bcaType}
-					<BCABadge type={bcaType} size={42} />
+					<BCABadge type={bcaType} size={36} />
 				{:else}
 					<div
-						class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-base font-bold text-white"
+						class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white"
 						style="background-color: {cat?.color ?? hashColor(exp.name)}"
 					>
 						{exp.name.charAt(0).toUpperCase()}
@@ -569,63 +569,55 @@
 
 				<!-- Info -->
 				<div class="min-w-0 flex-1">
-					<!-- Merchant / counterparty name -->
-					<p class="font-semibold text-card-foreground">{exp.name}</p>
+					<!-- Name + optional remark -->
+					<div class="flex items-baseline gap-1.5">
+						<p class="truncate font-semibold leading-tight text-card-foreground">{exp.name}</p>
+						{#if exp.remark}
+							<p class="shrink-0 truncate text-xs italic text-muted-foreground">"{exp.remark}"</p>
+						{/if}
+					</div>
 
-					<!-- Remark: the user's own note on the transfer -->
-					{#if exp.remark}
-						<p class="mt-0.5 text-xs italic text-muted-foreground">"{exp.remark}"</p>
-					{/if}
-
-					<!-- Meta chips -->
-					<div class="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs">
+					<!-- Single meta row: date · source · category · tags · +Tag -->
+					<div class="mt-1 flex flex-wrap items-center gap-1.5 text-xs">
 						<span class="text-muted-foreground">{exp.date}</span>
 
-						<!-- Source type badge — outlined with "via" prefix to distinguish from category -->
 						{#if exp.sourceType === 'qr'}
-							<span class="rounded-full border border-violet-400 px-2 py-0.5 text-xs font-medium text-violet-600 dark:border-violet-500 dark:text-violet-400">via QR</span>
+							<span class="rounded-full border border-violet-400 px-1.5 py-px font-medium text-violet-600 dark:border-violet-500 dark:text-violet-400">via QR</span>
 						{:else if exp.sourceType === 'biffast'}
-							<span class="rounded-full border border-sky-400 px-2 py-0.5 text-xs font-medium text-sky-600 dark:border-sky-500 dark:text-sky-400">via BI-Fast</span>
+							<span class="rounded-full border border-sky-400 px-1.5 py-px font-medium text-sky-600 dark:border-sky-500 dark:text-sky-400">via BI-Fast</span>
 						{:else if exp.sourceType === 'transfer'}
-							<span class="rounded-full border border-indigo-400 px-2 py-0.5 text-xs font-medium text-indigo-600 dark:border-indigo-500 dark:text-indigo-400">via Transfer</span>
+							<span class="rounded-full border border-indigo-400 px-1.5 py-px font-medium text-indigo-600 dark:border-indigo-500 dark:text-indigo-400">via Transfer</span>
 						{:else if exp.sourceType === 'flazz'}
-							<span class="rounded-full border border-blue-400 px-2 py-0.5 text-xs font-medium text-blue-600 dark:border-blue-500 dark:text-blue-400">via Flazz</span>
+							<span class="rounded-full border border-blue-400 px-1.5 py-px font-medium text-blue-600 dark:border-blue-500 dark:text-blue-400">via Flazz</span>
 						{:else if exp.sourceType === 'autodebit'}
-							<span class="rounded-full border border-emerald-400 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:border-emerald-500 dark:text-emerald-400">via Auto-debit</span>
+							<span class="rounded-full border border-emerald-400 px-1.5 py-px font-medium text-emerald-600 dark:border-emerald-500 dark:text-emerald-400">via Auto-debit</span>
 						{/if}
 
-						<!-- Category chip — click to filter -->
 						{#if cat}
 							<button
 								type="button"
 								onclick={() => { filterCategoryId = filterCategoryId === cat!.id ? null : cat!.id; }}
-								class="rounded-full px-2 py-0.5 transition hover:ring-1 hover:ring-current
+								class="rounded-full px-1.5 py-px transition hover:ring-1 hover:ring-current
 									{filterCategoryId === cat.id ? 'ring-1 ring-current' : ''}"
 								style="background-color: {cat.color}22; color: {cat.color}"
-							>
-								{cat.name}
-							</button>
+							>{cat.name}</button>
 						{/if}
-					</div>
 
-					<!-- Tags row -->
-					<div class="mt-1.5 flex flex-wrap items-center gap-1.5">
 						{#each tagsFor(exp.id) as tag (tag!.id)}
 							<span
-								class="group flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
+								class="flex items-center gap-0.5 rounded-full px-1.5 py-px font-medium"
 								style="background-color: {tag!.color}22; color: {tag!.color}"
 							>
 								{tag!.name}
 								<button
 									type="button"
 									onclick={() => removeTag(tag!.id, exp.id)}
-									class="opacity-50 transition hover:opacity-100"
+									class="opacity-40 transition hover:opacity-100"
 									aria-label="Remove tag"
-								>
-									<XIcon class="h-3 w-3" />
-								</button>
+								><XIcon class="h-2.5 w-2.5" /></button>
 							</span>
 						{/each}
+
 						<TagPicker
 							tags={data.tags}
 							appliedIds={data.expenseTagMap[exp.id] ?? []}

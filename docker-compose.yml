@@ -1,0 +1,17 @@
+services:
+  app:
+    build: .
+    ports:
+      - '3000:3000'
+    environment:
+      - AUTH_SECRET=${AUTH_SECRET}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - ORIGIN=${ORIGIN:-http://localhost:3000}
+      - DATABASE_URL=/app/data/db.sqlite
+    volumes:
+      - finance-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  finance-data:

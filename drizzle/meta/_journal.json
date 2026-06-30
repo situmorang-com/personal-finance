@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1782466497129,
+      "tag": "0000_loud_black_queen",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1782765154396,
+      "tag": "0001_freezing_harpoon",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1782766011169,
+      "tag": "0002_rich_bastion",
+      "breakpoints": true
+    }
+  ]
+}

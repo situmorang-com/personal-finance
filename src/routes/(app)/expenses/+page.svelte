@@ -5,6 +5,7 @@
 	import { hashColor } from '$lib/color';
 	import BCABadge from '$lib/components/BCABadge.svelte';
 	import TagPicker from '$lib/components/TagPicker.svelte';
+	import Donut from '$lib/components/Donut.svelte';
 	import * as Sheet from '$lib/components/ui/sheet/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import PlusIcon from '@lucide/svelte/icons/plus';
@@ -207,6 +208,20 @@
 			{/if}
 		</div>
 	</div>
+
+	<!-- Category donut -->
+	{#if ins.categorySlices.length > 0}
+		<div class="rounded-2xl border border-border bg-card p-5">
+			<p class="mb-4 text-sm font-semibold text-card-foreground">Spending by category</p>
+			<Donut
+				slices={ins.categorySlices}
+				size={160}
+				thickness={22}
+				centerLabel="total"
+				centerValue={formatMoney(ins.thisMonth.total, data.mainCurrency)}
+			/>
+		</div>
+	{/if}
 
 	<!-- Insight cards row -->
 	{#if ins.biggestExpense || ins.anomalies.length > 0 || ins.newRecurring.length > 0}

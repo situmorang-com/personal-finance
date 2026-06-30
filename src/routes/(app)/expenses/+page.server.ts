@@ -26,14 +26,13 @@ type Expense = { id: number; name: string; amount: number; date: string; directi
 type Category = { id: number; name: string; color: string };
 
 export type ExpenseInsights = {
-	// Summary stats for current month
 	thisMonth: { total: number; income: number; txnCount: number; dailyAvg: number };
 	lastMonth: { total: number; income: number };
-	// Individual insight cards
 	biggestExpense: { name: string; amount: number; date: string } | null;
 	topCategory: { name: string; color: string; total: number; pct: number } | null;
 	anomalies: { categoryName: string; color: string; thisMonth: number; lastMonth: number; pctChange: number }[];
 	newRecurring: { name: string; count: number; avgAmount: number }[];
+	categorySlices: { label: string; value: number; color: string }[];
 };
 
 function computeInsights(items: Expense[], cats: Category[]): ExpenseInsights {
@@ -137,7 +136,14 @@ function computeInsights(items: Expense[], cats: Category[]): ExpenseInsights {
 		biggestExpense: biggest ? { name: biggest.name, amount: biggest.amount, date: biggest.date } : null,
 		topCategory: topCat ? { name: topCat.name, color: topCat.color, total: topCatTotal, pct: Math.round((topCatTotal / thisTotal) * 100) } : null,
 		anomalies,
-		newRecurring
+		newRecurring,
+		categorySlices: Object.entries(catTotals)
+			.map(([catId, value]) => {
+				const cat = cats.find(c => c.id === +catId);
+				return { label: cat?.name ?? 'Other', value, color: cat?.color ?? '#64748b' };
+			})
+			.sort((a, b) => b.value - a.value)
+			.slice(0, 8)
 	};
 }
 

@@ -5,13 +5,19 @@
 		size = 150,
 		thickness = 20,
 		centerLabel = '',
-		centerValue = ''
+		centerValue = '',
+		formatValue = undefined,
+		onSelect = undefined,
+		selectedLabel = undefined
 	}: {
 		slices: Slice[];
 		size?: number;
 		thickness?: number;
 		centerLabel?: string;
 		centerValue?: string;
+		formatValue?: (value: number) => string;
+		onSelect?: (label: string) => void;
+		selectedLabel?: string | null;
 	} = $props();
 
 	const radius = $derived((size - thickness) / 2);
@@ -58,10 +64,24 @@
 
 	<div class="min-w-0 flex-1 space-y-1.5">
 		{#each segments as seg (seg.label)}
-			<div class="flex items-center gap-2 text-sm">
+			{@const active = selectedLabel === seg.label}
+			<div
+				class="flex items-center gap-2 text-sm rounded-lg px-1 py-0.5 transition
+					{onSelect ? 'cursor-pointer hover:bg-accent' : ''}
+					{active ? 'bg-accent ring-1 ring-border' : ''}"
+				role={onSelect ? 'button' : undefined}
+				tabindex={onSelect ? 0 : undefined}
+				onclick={() => onSelect?.(seg.label)}
+				onkeydown={(e) => e.key === 'Enter' && onSelect?.(seg.label)}
+			>
 				<span class="h-2.5 w-2.5 shrink-0 rounded-full" style="background-color: {seg.color}"></span>
 				<span class="min-w-0 flex-1 truncate text-muted-foreground">{seg.label}</span>
-				<span class="font-medium text-card-foreground">{Math.round((seg.value / total) * 100)}%</span>
+				{#if formatValue}
+					<span class="shrink-0 text-xs text-muted-foreground">{Math.round((seg.value / total) * 100)}%</span>
+					<span class="shrink-0 font-medium text-card-foreground">{formatValue(seg.value)}</span>
+				{:else}
+					<span class="font-medium text-card-foreground">{Math.round((seg.value / total) * 100)}%</span>
+				{/if}
 			</div>
 		{:else}
 			<p class="text-sm text-muted-foreground">No data yet.</p>

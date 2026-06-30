@@ -34,6 +34,15 @@
 	let editingTagIds = $state<Set<number>>(new Set());
 	let busy = $state(false);
 
+	// ── Category filter ──────────────────────────────────────────────────────
+	let filterCategoryId = $state<number | null>(null);
+
+	function selectCategory(catName: string) {
+		const cat = data.categories.find((c) => c.name === catName);
+		if (!cat) return;
+		filterCategoryId = filterCategoryId === cat.id ? null : cat.id;
+	}
+
 	const tagById = $derived(new Map(data.tags.map((t) => [t.id, t])));
 
 	function tagsFor(expId: number) {
@@ -122,9 +131,15 @@
 	}
 
 	const filtered = $derived(
-		data.expenses.filter((e) =>
-			!search || e.name.toLowerCase().includes(search.toLowerCase())
-		)
+		data.expenses.filter((e) => {
+			if (search && !e.name.toLowerCase().includes(search.toLowerCase())) return false;
+			if (filterCategoryId !== null && e.categoryId !== filterCategoryId) return false;
+			return true;
+		})
+	);
+
+	const filterCategoryName = $derived(
+		filterCategoryId !== null ? data.categories.find((c) => c.id === filterCategoryId)?.name ?? null : null
 	);
 
 	const totalExpenses = $derived(
@@ -211,21 +226,37 @@
 
 	<!-- Category donut -->
 	{#if ins.categorySlices.length > 0}
+		{@const filterCat = filterCategoryId !== null ? data.categories.find((c) => c.id === filterCategoryId) : null}
 		<div class="rounded-2xl border border-border bg-card p-5">
-			<p class="mb-4 text-sm font-semibold text-card-foreground">Spending by category</p>
+			<div class="mb-4 flex items-center justify-between">
+				<p class="text-sm font-semibold text-card-foreground">Spending by category</p>
+				{#if filterCategoryId !== null}
+					<button
+						onclick={() => (filterCategoryId = null)}
+						class="flex items-center gap-1 rounded-full border border-border px-2.5 py-0.5 text-xs font-medium text-muted-foreground hover:bg-accent"
+					>
+						<XIcon class="h-3 w-3" /> Clear filter
+					</button>
+				{/if}
+			</div>
 			<Donut
 				slices={ins.categorySlices}
 				size={160}
 				thickness={22}
-				centerLabel="total"
-				centerValue={formatMoney(ins.thisMonth.total, data.mainCurrency)}
+				centerLabel={filterCategoryId !== null ? filterCat?.name : 'total'}
+				centerValue={filterCategoryId !== null
+					? formatMoney(ins.categorySlices.find((s) => s.label === filterCat?.name)?.value ?? 0, data.mainCurrency)
+					: formatMoney(ins.thisMonth.total, data.mainCurrency)}
+				formatValue={(v) => formatMoney(v, data.mainCurrency)}
+				onSelect={selectCategory}
+				selectedLabel={filterCat?.name ?? null}
 			/>
 		</div>
 	{/if}
 
 	<!-- Insight cards row -->
 	{#if ins.biggestExpense || ins.anomalies.length > 0 || ins.newRecurring.length > 0}
-		<div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+		<div class="grid grid-cols-3 gap-3">
 
 			<!-- Biggest expense -->
 			{#if ins.biggestExpense}
@@ -465,13 +496,26 @@
 		</div>
 	{/if}
 
-	<div class="relative">
-		<SearchIcon class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-		<input
-			bind:value={search}
-			placeholder="Search expenses..."
-			class="w-full rounded-xl border border-border bg-background py-2.5 pl-9 pr-4 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 sm:max-w-xs"
-		/>
+	<div class="flex flex-wrap items-center gap-2">
+		<div class="relative">
+			<SearchIcon class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+			<input
+				bind:value={search}
+				placeholder="Search expenses..."
+				class="w-full rounded-xl border border-border bg-background py-2.5 pl-9 pr-4 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 sm:max-w-xs"
+			/>
+		</div>
+		{#if filterCategoryName}
+			{@const filterCat2 = data.categories.find((c) => c.id === filterCategoryId)}
+			<button
+				onclick={() => (filterCategoryId = null)}
+				class="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition hover:opacity-80"
+				style="background-color: {filterCat2?.color ?? '#64748b'}22; color: {filterCat2?.color ?? '#64748b'}"
+			>
+				{filterCategoryName}
+				<XIcon class="h-3 w-3" />
+			</button>
+		{/if}
 	</div>
 
 	<div class="space-y-2">
@@ -531,11 +575,17 @@
 							<span class="rounded-full border border-emerald-400 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:border-emerald-500 dark:text-emerald-400">via Auto-debit</span>
 						{/if}
 
-						<!-- Category chip -->
+						<!-- Category chip — click to filter -->
 						{#if cat}
-							<span class="rounded-full px-2 py-0.5" style="background-color: {cat.color}22; color: {cat.color}">
+							<button
+								type="button"
+								onclick={() => { filterCategoryId = filterCategoryId === cat!.id ? null : cat!.id; }}
+								class="rounded-full px-2 py-0.5 transition hover:ring-1 hover:ring-current
+									{filterCategoryId === cat.id ? 'ring-1 ring-current' : ''}"
+								style="background-color: {cat.color}22; color: {cat.color}"
+							>
 								{cat.name}
-							</span>
+							</button>
 						{/if}
 					</div>
 

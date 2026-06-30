@@ -9,10 +9,19 @@ export const CATEGORY_RULES: { name: string; color: string; keywords: string[] }
 
 	// ── Food & Dining ────────────────────────────────────────────────────────
 	{ name: 'Food & Dining', color: '#f59e0b', keywords: [
+		// International chains
 		'foodha', 'foodhall', 'food hall', 'subway', 'mcdonald', 'kfc', 'pizza',
-		'burger', 'resto', 'restaurant', 'warung', 'cafe', 'coffee', 'starbucks',
+		'burger', 'resto', 'restaurant', 'cafe', 'coffee', 'starbucks',
 		'chatime', 'jco', 'dunkin', 'bakery', 'sushi', 'gofood', 'grabfood',
 		'shopeefood', 'elox jus', 'jus', 'milkshake', 'boba', 'es teh', 'wandy froz',
+		// Indonesian street food & local
+		'warung', 'warteg', 'bakso', 'batagor', 'siomay', 'mie ayam', 'mie goreng',
+		'nasi goreng', 'nasi padang', 'rumah makan', 'rm pancor', 'rm ', 'padang',
+		'sate', 'soto', 'bubur', 'gorengan', 'martabak', 'ketupat', 'gado',
+		'pecel', 'ayam bakar', 'ayam goreng', 'geprek', 'seafood',
+		'ramen', 'ramenya', 'es kelapa', 'es teler', 'kios kelap', 'kelapa ',
+		'tahu', 'tempe', 'telor', 'roti ', 'donat', 'kedai', 'depot',
+		'ixobox', 'maju bersa', 'stim putra', 'kokufe',
 	]},
 
 	// ── Groceries ────────────────────────────────────────────────────────────
@@ -82,14 +91,71 @@ export const CATEGORY_RULES: { name: string; color: string; keywords: string[] }
 	{ name: 'Donation', color: '#f472b6', keywords: [
 		// English
 		'tithe', 'offering', 'donation', 'donate', 'charity', 'contribution', 'alms',
-		// Indonesian — church
+		// Indonesian — church names & terms
+		'gereja', 'gmahk', 'masehi advent', 'jisdac', 'gki ', 'gbi ', 'hkbp',
 		'perpuluhan', 'persembahan', 'kolekte', 'persembahan khusus',
+		// Indonesian — mosque / Islamic
+		'masjid', 'mushola', 'musala',
 		// Indonesian — general giving
 		'dana bantuan', 'dana sosial', 'dana kemanusiaan',
 		'sumbangan', 'donasi', 'sedekah', 'infaq', 'infak',
 		'zakat', 'wakaf', 'fidyah', 'kafarat',
 		// Common remark phrases
 		'bantuan sosial', 'bakti sosial', 'baksos',
+	]},
+
+	// ── Insurance ────────────────────────────────────────────────────────────
+	{ name: 'Insurance', color: '#0ea5e9', keywords: [
+		'bpjs', 'asuransi', 'premi', 'prudential', 'allianz', 'axa', 'manulife',
+		'sinarmas', 'bumiputera', 'tugu', 'jasindo', 'adira insurance',
+		'cigna', 'sompo', 'zurich', 'great eastern',
+	]},
+
+	// ── Investment ───────────────────────────────────────────────────────────
+	{ name: 'Investment', color: '#8b5cf6', keywords: [
+		'reksadana', 'reksa dana', 'bibit', 'ajaib', 'stockbit', 'ipot',
+		'indo premier', 'bareksa', 'pluang', 'pintu', 'indodax',
+		'deposito', 'obligasi', 'sbr', 'st0', 'sr0',
+		'pegadaian', 'emas antam', 'antam', 'logam mulia',
+		'saham', 'idx', 'bursa efek',
+	]},
+
+	// ── Loan & Credit ────────────────────────────────────────────────────────
+	{ name: 'Loan & Credit', color: '#dc2626', keywords: [
+		'cicilan', 'angsuran', 'kredit', 'pinjaman', 'dp ', 'uang muka',
+		'kredivo', 'akulaku', 'home credit', 'adira ', 'fif ',
+		'kartu kredit', 'tagihan', 'pembayaran kredit',
+	]},
+
+	// ── Tax ──────────────────────────────────────────────────────────────────
+	{ name: 'Tax', color: '#92400e', keywords: [
+		'pajak', 'pbb', 'ppn', 'pph', 'samsat', 'e-samsat', 'stnk',
+		'bphtb', 'bea balik nama', 'kantor pajak', 'coretax',
+	]},
+
+	// ── Travel ───────────────────────────────────────────────────────────────
+	{ name: 'Travel', color: '#14b8a6', keywords: [
+		'traveloka', 'tiket.com', 'tiketcom', 'pegi pegi', 'pegipegi',
+		'hotel', 'penginapan', 'villa', 'resort', 'airbnb', 'agoda', 'booking.com',
+		'garuda', 'lion air', 'batik air', 'citilink', 'sriwijaya', 'airasia',
+		'bandara', 'airport', 'terminal', 'stasiun', 'pelabuhan',
+		'visa ', 'paspor', 'imigrasi',
+	]},
+
+	// ── Personal Care ────────────────────────────────────────────────────────
+	{ name: 'Personal Care', color: '#e11d48', keywords: [
+		'salon', 'barbershop', 'barber', 'pangkas', 'cukur',
+		'spa', 'refleksi', 'pijat', 'massage',
+		'skincare', 'kosmetik', 'make up', 'makeup', 'wardah', 'emina',
+		'indomaret beauty', 'sociolla', 'sephora', 'the body shop',
+		'laundry', 'binatu', 'dry clean',
+	]},
+
+	// ── Fees & Charges ───────────────────────────────────────────────────────
+	{ name: 'Fees & Charges', color: '#6b7280', keywords: [
+		'biaya adm', 'biaya admin', 'biaya transfer', 'biaya bulanan',
+		'admin fee', 'service charge', 'materai', 'denda', 'penalti',
+		'biaya keterlambatan', 'late fee', 'iuran', 'biaya tahunan',
 	]},
 
 	// ── Transfer / E-Wallet ──────────────────────────────────────────────────

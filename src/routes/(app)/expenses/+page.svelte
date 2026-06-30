@@ -220,38 +220,42 @@
 
 		<!-- 4 stat cards stacked -->
 		<div class="flex min-w-0 flex-1 flex-col gap-3">
-			<div class="flex-1 rounded-2xl border border-border bg-card px-4 py-3">
+			<div class="flex flex-1 items-center justify-between rounded-2xl border border-border bg-card px-4 py-3">
 				<p class="text-xs text-muted-foreground">Spent this month</p>
-				<p class="mt-0.5 text-base font-bold text-card-foreground">{formatMoney(ins.thisMonth.total, data.mainCurrency)}</p>
-				{#if vsLast !== null}
-					<p class="mt-0.5 text-xs {vsLast > 0 ? 'text-rose-500' : 'text-emerald-500'}">
-						{vsLast > 0 ? '▲' : '▼'} {Math.abs(vsLast)}% vs last month
-					</p>
-				{/if}
-			</div>
-			<div class="flex-1 rounded-2xl border border-border bg-card px-4 py-3">
-				<p class="text-xs text-muted-foreground">Income received</p>
-				<p class="mt-0.5 text-base font-bold text-emerald-600 dark:text-emerald-400">{formatMoney(ins.thisMonth.income, data.mainCurrency)}</p>
-				<p class="mt-0.5 text-xs text-muted-foreground">
-					Net {#if ins.thisMonth.income >= ins.thisMonth.total}
-						<span class="text-emerald-500">+{formatMoney(ins.thisMonth.income - ins.thisMonth.total, data.mainCurrency)}</span>
-					{:else}
-						<span class="text-rose-500">-{formatMoney(ins.thisMonth.total - ins.thisMonth.income, data.mainCurrency)}</span>
+				<div class="flex items-baseline gap-2">
+					<p class="text-base font-bold text-card-foreground">{formatMoney(ins.thisMonth.total, data.mainCurrency)}</p>
+					{#if vsLast !== null}
+						<span class="text-xs font-medium {vsLast > 0 ? 'text-rose-500' : 'text-emerald-500'}">
+							{vsLast > 0 ? '▲' : '▼'}{Math.abs(vsLast)}%
+						</span>
 					{/if}
-				</p>
+				</div>
 			</div>
-			<div class="flex-1 rounded-2xl border border-border bg-card px-4 py-3">
+			<div class="flex flex-1 items-center justify-between rounded-2xl border border-border bg-card px-4 py-3">
+				<p class="text-xs text-muted-foreground">Income received</p>
+				<div class="flex items-baseline gap-2">
+					<p class="text-base font-bold text-emerald-600 dark:text-emerald-400">{formatMoney(ins.thisMonth.income, data.mainCurrency)}</p>
+					<span class="text-xs font-medium {ins.thisMonth.income >= ins.thisMonth.total ? 'text-emerald-500' : 'text-rose-500'}">
+						Net {ins.thisMonth.income >= ins.thisMonth.total ? '+' : '-'}{formatMoney(Math.abs(ins.thisMonth.income - ins.thisMonth.total), data.mainCurrency)}
+					</span>
+				</div>
+			</div>
+			<div class="flex flex-1 items-center justify-between rounded-2xl border border-border bg-card px-4 py-3">
 				<p class="text-xs text-muted-foreground">Daily average</p>
-				<p class="mt-0.5 text-base font-bold text-card-foreground">{formatMoney(ins.thisMonth.dailyAvg, data.mainCurrency)}</p>
-				<p class="mt-0.5 text-xs text-muted-foreground">{ins.thisMonth.txnCount} transactions</p>
+				<div class="flex items-baseline gap-2">
+					<p class="text-base font-bold text-card-foreground">{formatMoney(ins.thisMonth.dailyAvg, data.mainCurrency)}</p>
+					<span class="text-xs text-muted-foreground">{ins.thisMonth.txnCount} txns</span>
+				</div>
 			</div>
-			<div class="flex-1 rounded-2xl border border-border bg-card px-4 py-3">
+			<div class="flex flex-1 items-center justify-between rounded-2xl border border-border bg-card px-4 py-3">
 				<p class="text-xs text-muted-foreground">Top category</p>
 				{#if ins.topCategory}
-					<p class="mt-0.5 text-base font-bold" style="color: {ins.topCategory.color}">{ins.topCategory.name}</p>
-					<p class="mt-0.5 text-xs text-muted-foreground">{ins.topCategory.pct}% of spending</p>
+					<div class="flex items-baseline gap-2">
+						<p class="text-base font-bold" style="color: {ins.topCategory.color}">{ins.topCategory.name}</p>
+						<span class="text-xs text-muted-foreground">{ins.topCategory.pct}%</span>
+					</div>
 				{:else}
-					<p class="mt-0.5 text-sm text-muted-foreground">—</p>
+					<p class="text-base font-bold text-muted-foreground">—</p>
 				{/if}
 			</div>
 		</div>

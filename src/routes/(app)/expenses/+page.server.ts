@@ -19,7 +19,7 @@ import {
 
 // ── Insight types ───────────────────────────────────────────────────────────
 type Expense = { id: number; name: string; amount: number; date: string; direction: string; categoryId: number | null };
-type Category = { id: number; name: string; color: string };
+type Category = { id: number; name: string; color: string; monthlyBudget: number | null };
 
 export type ExpenseInsights = {
 	thisMonth: { total: number; income: number; txnCount: number; dailyAvg: number };
@@ -29,6 +29,7 @@ export type ExpenseInsights = {
 	anomalies: { categoryName: string; color: string; thisMonth: number; lastMonth: number; pctChange: number }[];
 	newRecurring: { name: string; count: number; avgAmount: number }[];
 	categorySlices: { label: string; value: number; color: string }[];
+	budgets: { categoryId: number; name: string; color: string; spent: number; budget: number; pct: number }[];
 };
 
 function computeInsights(items: Expense[], cats: Category[]): ExpenseInsights {
@@ -139,7 +140,18 @@ function computeInsights(items: Expense[], cats: Category[]): ExpenseInsights {
 				return { label: cat?.name ?? 'Other', value, color: cat?.color ?? '#64748b' };
 			})
 			.sort((a, b) => b.value - a.value)
-			.slice(0, 8)
+			.slice(0, 8),
+		budgets: cats
+			.filter(c => c.monthlyBudget && c.monthlyBudget > 0)
+			.map(c => ({
+				categoryId: c.id,
+				name: c.name,
+				color: c.color,
+				spent: catTotals[c.id] ?? 0,
+				budget: c.monthlyBudget!,
+				pct: Math.round(((catTotals[c.id] ?? 0) / c.monthlyBudget!) * 100)
+			}))
+			.sort((a, b) => b.pct - a.pct)
 	};
 }
 
@@ -270,6 +282,111 @@ export const actions: Actions = {
 			.run();
 
 		return { success: true };
+	},
+
+	// Re-insert a previously deleted expense (used by the undo toast). Does not preserve the original id.
+	restore: async (event) => {
+		const session = await event.locals.auth();
+		if (!session?.user) return fail(401);
+		const userId = session.user.id;
+
+		const form = await event.request.formData();
+		const name = form.get('name')?.toString();
+		const amount = Number(form.get('amount'));
+		const date = form.get('date')?.toString();
+		if (!name || !date || Number.isNaN(amount)) return fail(400, { error: 'Invalid data.' });
+
+		const categoryId = form.get('categoryId') ? Number(form.get('categoryId')) : null;
+		const currencyId = form.get('currencyId') ? Number(form.get('currencyId')) : null;
+		const direction = (form.get('direction')?.toString() as 'expense' | 'income') || 'expense';
+		const sourceType = form.get('sourceType')?.toString() || 'manual';
+		const recipient = form.get('recipient')?.toString() || null;
+		const remark = form.get('remark')?.toString() || null;
+		const notes = form.get('notes')?.toString() || null;
+		const importRef = form.get('importRef')?.toString() || null;
+
+		db.insert(expenses).values({
+			userId, name, amount, date, categoryId, currencyId,
+			direction: direction as any, sourceType: sourceType as any,
+			recipient, remark, notes, importRef
+		}).run();
+
+		return { success: true };
+	},
+
+	bulkDelete: async (event) => {
+		const session = await event.locals.auth();
+		if (!session?.user) return fail(401);
+		const userId = session.user.id;
+
+		const form = await event.request.formData();
+		const ids = (form.get('ids')?.toString() || '').split(',').map(Number).filter((n) => !Number.isNaN(n));
+		if (ids.length === 0) return fail(400, { error: 'No transactions selected.' });
+
+		const result = db.delete(expenses)
+			.where(and(eq(expenses.userId, userId), inArray(expenses.id, ids)))
+			.run();
+
+		return { success: true, message: `Deleted ${result.changes} transaction${result.changes !== 1 ? 's' : ''}.` };
+	},
+
+	bulkSetCategory: async (event) => {
+		const session = await event.locals.auth();
+		if (!session?.user) return fail(401);
+		const userId = session.user.id;
+
+		const form = await event.request.formData();
+		const ids = (form.get('ids')?.toString() || '').split(',').map(Number).filter((n) => !Number.isNaN(n));
+		const categoryId = Number(form.get('categoryId'));
+		if (ids.length === 0 || !categoryId) return fail(400, { error: 'Missing transactions or category.' });
+
+		db.update(expenses)
+			.set({ categoryId })
+			.where(and(eq(expenses.userId, userId), inArray(expenses.id, ids)))
+			.run();
+
+		// Learn the merchant → category preference for each unique merchant in the batch
+		const touched = db.select({ id: expenses.id, name: expenses.name })
+			.from(expenses)
+			.where(and(eq(expenses.userId, userId), inArray(expenses.id, ids)))
+			.all();
+		const seen = new Set<string>();
+		for (const exp of touched) {
+			const key = exp.name.trim().toLowerCase();
+			if (seen.has(key)) continue;
+			seen.add(key);
+			learnCategoryAssignment(userId, exp.id, categoryId);
+		}
+
+		return { success: true, message: `Re-categorized ${ids.length} transaction${ids.length !== 1 ? 's' : ''}.` };
+	},
+
+	duplicate: async (event) => {
+		const session = await event.locals.auth();
+		if (!session?.user) return fail(401);
+		const userId = session.user.id;
+
+		const form = await event.request.formData();
+		const id = Number(form.get('id'));
+		const original = db.select().from(expenses).where(and(eq(expenses.id, id), eq(expenses.userId, userId))).get();
+		if (!original) return fail(404, { error: 'Transaction not found.' });
+
+		const today = new Date().toISOString().slice(0, 10);
+		const inserted = db.insert(expenses).values({
+			userId,
+			categoryId: original.categoryId,
+			currencyId: original.currencyId,
+			name: original.name,
+			amount: original.amount,
+			date: today,
+			direction: original.direction,
+			sourceType: 'manual',
+			recipient: original.recipient,
+			remark: original.remark,
+			notes: original.notes
+		}).run();
+
+		return { success: true, message: 'Transaction duplicated.', id: Number(inserted.lastInsertRowid) };
 	},
 
 	uploadStatement: async (event) => {

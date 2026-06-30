@@ -49,7 +49,7 @@
 						<form
 							method="POST"
 							action="?/updateCategory"
-							class="flex flex-1 items-center gap-2"
+							class="flex flex-1 flex-wrap items-center gap-2"
 							use:enhance={() => async ({ update }) => { editingCat = null; await update(); }}
 						>
 							<input type="hidden" name="id" value={cat.id} />
@@ -64,6 +64,15 @@
 								type="color"
 								value={editingCat.color}
 								class="h-7 w-9 cursor-pointer rounded border border-input bg-background p-0.5"
+							/>
+							<input
+								name="monthlyBudget"
+								type="number"
+								min="0"
+								step="1"
+								value={editingCat.monthlyBudget ?? ''}
+								placeholder="Budget/mo"
+								class="w-24 rounded-lg border border-input bg-background px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-ring/50"
 							/>
 							<button type="submit" class="rounded-lg p-1.5 text-primary hover:bg-primary/10"><CheckIcon class="h-4 w-4" /></button>
 							<button type="button" onclick={() => editingCat = null} class="rounded-lg p-1.5 text-muted-foreground hover:bg-accent"><XIcon class="h-4 w-4" /></button>
@@ -96,6 +105,11 @@
 					{:else}
 						<!-- Default row -->
 						<span class="min-w-0 flex-1 truncate text-sm font-medium text-card-foreground">{cat.name}</span>
+						{#if cat.monthlyBudget}
+							<span class="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+								Budget {cat.monthlyBudget.toLocaleString()}/mo
+							</span>
+						{/if}
 						<span class="shrink-0 text-xs text-muted-foreground">{cat.count} expense{cat.count !== 1 ? 's' : ''}</span>
 						<div class="flex shrink-0 items-center gap-1">
 							<button

@@ -63,9 +63,11 @@ export const actions: Actions = {
 		const id = Number(form.get('id'));
 		const name = form.get('name')?.toString().trim();
 		const color = form.get('color')?.toString();
+		const budgetRaw = form.get('monthlyBudget')?.toString().trim();
+		const monthlyBudget = budgetRaw ? Number(budgetRaw) : null;
 		if (!id || !name || !color) return fail(400, { error: 'Missing fields.' });
 		db.update(categories)
-			.set({ name, color })
+			.set({ name, color, monthlyBudget })
 			.where(and(eq(categories.id, id), eq(categories.userId, userId)))
 			.run();
 		return { success: true };

@@ -30,7 +30,8 @@ export const categories = sqliteTable('categories', {
 		.notNull()
 		.references(() => users.id, { onDelete: 'cascade' }),
 	name: text('name').notNull(),
-	color: text('color').notNull().default('#6366f1')
+	color: text('color').notNull().default('#6366f1'),
+	monthlyBudget: real('monthly_budget')
 });
 
 export const subscriptions = sqliteTable('subscriptions', {

@@ -18,6 +18,10 @@
 	import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
 	import ArrowUpIcon from '@lucide/svelte/icons/arrow-up';
 	import ArrowDownIcon from '@lucide/svelte/icons/arrow-down';
+	import CalendarIcon from '@lucide/svelte/icons/calendar';
+	import DownloadIcon from '@lucide/svelte/icons/download';
+	import CopyIcon from '@lucide/svelte/icons/copy';
+	import CheckSquareIcon from '@lucide/svelte/icons/square-check';
 
 	let { data, form } = $props();
 
@@ -40,6 +44,64 @@
 	// ── Category filter ──────────────────────────────────────────────────────
 	let filterCategoryId = $state<number | null>(null);
 
+	// ── Direction filter (all / expense / income) ───────────────────────────
+	let directionFilter = $state<'all' | 'expense' | 'income'>('all');
+
+	// ── Date range filter ────────────────────────────────────────────────────
+	type DatePreset = 'all' | 'thisMonth' | 'lastMonth' | 'last7' | 'last30' | 'custom';
+	let datePreset = $state<DatePreset>('all');
+	let customFrom = $state('');
+	let customTo = $state('');
+	let dateMenuOpen = $state(false);
+
+	function isoDaysAgo(n: number) {
+		return new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
+	}
+
+	const dateRange = $derived.by((): { from: string | null; to: string | null } => {
+		const now = new Date();
+		const thisYM = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+		const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+		const prevYM = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
+
+		switch (datePreset) {
+			case 'thisMonth': return { from: `${thisYM}-01`, to: null };
+			case 'lastMonth': {
+				const lastDay = new Date(now.getFullYear(), now.getMonth(), 0).getDate();
+				return { from: `${prevYM}-01`, to: `${prevYM}-${String(lastDay).padStart(2, '0')}` };
+			}
+			case 'last7': return { from: isoDaysAgo(6), to: null };
+			case 'last30': return { from: isoDaysAgo(29), to: null };
+			case 'custom': return { from: customFrom || null, to: customTo || null };
+			default: return { from: null, to: null };
+		}
+	});
+
+	const dateRangeLabel = $derived.by(() => {
+		switch (datePreset) {
+			case 'thisMonth': return 'This month';
+			case 'lastMonth': return 'Last month';
+			case 'last7': return 'Last 7 days';
+			case 'last30': return 'Last 30 days';
+			case 'custom': return customFrom && customTo ? `${customFrom} → ${customTo}` : 'Custom range';
+			default: return null;
+		}
+	});
+
+	// ── Toast / undo ─────────────────────────────────────────────────────────
+	let toast = $state<{ message: string; undo?: () => void } | null>(null);
+	let toastTimer: ReturnType<typeof setTimeout> | null = null;
+
+	function showToast(message: string, undo?: () => void) {
+		if (toastTimer) clearTimeout(toastTimer);
+		toast = { message, undo };
+		toastTimer = setTimeout(() => (toast = null), 5000);
+	}
+
+	// ── Pagination ───────────────────────────────────────────────────────────
+	const PAGE_SIZE = 50;
+	let visibleCount = $state(PAGE_SIZE);
+
 	function selectCategory(catName: string) {
 		const cat = data.categories.find((c) => c.name === catName);
 		if (!cat) return;
@@ -60,6 +122,14 @@
 	}
 	function clearSelection() {
 		selectedIds = new Set();
+	}
+
+	function toggleSelectAll(ids: number[]) {
+		const allSelected = ids.every((id) => selectedIds.has(id));
+		const next = new Set(selectedIds);
+		if (allSelected) for (const id of ids) next.delete(id);
+		else for (const id of ids) next.add(id);
+		selectedIds = next;
 	}
 
 	// Programmatic form-action POST + refresh
@@ -109,6 +179,80 @@
 		postAction('applyCategorySuggestions', {});
 	}
 
+	// ── Delete with undo ─────────────────────────────────────────────────────
+	function restoreFields(exp: Exp): Record<string, string> {
+		return {
+			name: exp.name,
+			amount: String(exp.amount),
+			date: exp.date,
+			categoryId: exp.categoryId ? String(exp.categoryId) : '',
+			currencyId: exp.currencyId ? String(exp.currencyId) : '',
+			direction: exp.direction,
+			sourceType: exp.sourceType ?? 'manual',
+			recipient: exp.recipient ?? '',
+			remark: exp.remark ?? '',
+			notes: exp.notes ?? '',
+			importRef: exp.importRef ?? ''
+		};
+	}
+
+	async function deleteExpense(exp: Exp) {
+		await postAction('delete', { id: String(exp.id) });
+		showToast(`Deleted "${exp.name}".`, () => postAction('restore', restoreFields(exp)));
+	}
+
+	async function bulkDelete() {
+		const toDelete = data.expenses.filter((e) => selectedIds.has(e.id));
+		const ids = [...selectedIds].join(',');
+		clearSelection();
+		await postAction('bulkDelete', { ids });
+		showToast(`Deleted ${toDelete.length} transaction${toDelete.length !== 1 ? 's' : ''}.`, async () => {
+			busy = true;
+			for (const exp of toDelete) {
+				const fd = new FormData();
+				for (const [k, v] of Object.entries(restoreFields(exp))) fd.append(k, v);
+				await fetch('?/restore', { method: 'POST', body: fd });
+			}
+			await invalidateAll();
+			busy = false;
+		});
+	}
+
+	function bulkSetCategory(categoryId: number) {
+		const ids = [...selectedIds].join(',');
+		clearSelection();
+		postAction('bulkSetCategory', { ids, categoryId: String(categoryId) });
+	}
+
+	async function duplicateExpense(exp: Exp) {
+		await postAction('duplicate', { id: String(exp.id) });
+		showToast(`Duplicated "${exp.name}" with today's date.`);
+	}
+
+	// ── CSV export ───────────────────────────────────────────────────────────
+	function exportCsv() {
+		const rows = [
+			['Date', 'Name', 'Amount', 'Currency', 'Direction', 'Category', 'Tags', 'Remark', 'Notes']
+		];
+		for (const exp of sorted) {
+			const cat = data.categories.find((c) => c.id === exp.categoryId);
+			const expCurrency = data.currencies.find((c) => c.id === exp.currencyId);
+			const tagNames = tagsFor(exp.id).map((t) => t!.name).join('; ');
+			rows.push([
+				exp.date, exp.name, String(exp.amount), expCurrency?.code ?? '',
+				exp.direction, cat?.name ?? '', tagNames, exp.remark ?? '', exp.notes ?? ''
+			]);
+		}
+		const csv = rows.map((r) => r.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(',')).join('\n');
+		const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = `expenses-${new Date().toISOString().slice(0, 10)}.csv`;
+		a.click();
+		URL.revokeObjectURL(url);
+	}
+
 	function bcaCardType(importRef: string | null): 'debit' | 'cc' | null {
 		if (!importRef) return null;
 		if (importRef.match(/^\[bca-debit-/)) return 'debit';
@@ -135,8 +279,17 @@
 
 	const filtered = $derived(
 		data.expenses.filter((e) => {
-			if (search && !e.name.toLowerCase().includes(search.toLowerCase())) return false;
+			if (search) {
+				const q = search.toLowerCase();
+				const matchesName = e.name.toLowerCase().includes(q);
+				const matchesRemark = e.remark?.toLowerCase().includes(q) ?? false;
+				const matchesAmount = String(e.amount).includes(q);
+				if (!matchesName && !matchesRemark && !matchesAmount) return false;
+			}
 			if (filterCategoryId !== null && e.categoryId !== filterCategoryId) return false;
+			if (directionFilter !== 'all' && e.direction !== directionFilter) return false;
+			if (dateRange.from && e.date < dateRange.from) return false;
+			if (dateRange.to && e.date > dateRange.to) return false;
 			return true;
 		})
 	);
@@ -176,10 +329,19 @@
 		return arr;
 	});
 
+	// Reset pagination whenever the active filter/sort set changes
+	$effect(() => {
+		sorted;
+		visibleCount = PAGE_SIZE;
+	});
+
+	const visible = $derived(sorted.slice(0, visibleCount));
+	const hasMore = $derived(sorted.length > visibleCount);
+
 	type Group = { key: string; label: string; color?: string; items: typeof sorted; total: number; income: number };
 
 	const grouped = $derived.by(() => {
-		if (groupBy === 'none') return [{ key: 'all', label: '', color: undefined, items: sorted, total: 0, income: 0 }];
+		if (groupBy === 'none') return [{ key: 'all', label: '', color: undefined, items: visible, total: 0, income: 0 }];
 
 		const map = new Map<string, Group>();
 
@@ -190,7 +352,7 @@
 		const prevDate = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
 		const prevMonthYM = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
 
-		for (const exp of sorted) {
+		for (const exp of visible) {
 			let key: string;
 			let label: string;
 			let color: string | undefined;
@@ -341,6 +503,31 @@
 			</div>
 		</div>
 	</div>
+
+	<!-- Budgets -->
+	{#if ins.budgets.length > 0}
+		<div class="rounded-2xl border border-border bg-card p-5">
+			<p class="mb-4 text-sm font-semibold text-card-foreground">Budgets this month</p>
+			<div class="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
+				{#each ins.budgets as b (b.categoryId)}
+					<div>
+						<div class="mb-1 flex items-center justify-between text-sm">
+							<span class="font-medium" style="color: {b.color}">{b.name}</span>
+							<span class="text-xs {b.pct >= 100 ? 'font-semibold text-rose-500' : 'text-muted-foreground'}">
+								{formatMoney(b.spent, data.mainCurrency)} / {formatMoney(b.budget, data.mainCurrency)}
+							</span>
+						</div>
+						<div class="h-2 w-full overflow-hidden rounded-full bg-muted">
+							<div
+								class="h-full rounded-full transition-all {b.pct >= 100 ? 'bg-rose-500' : b.pct >= 80 ? 'bg-amber-400' : ''}"
+								style="width: {Math.min(b.pct, 100)}%; {b.pct < 80 ? `background-color: ${b.color}` : ''}"
+							></div>
+						</div>
+					</div>
+				{/each}
+			</div>
+		</div>
+	{/if}
 
 	<!-- Insight cards row — always 3 cols -->
 	<div class="grid grid-cols-3 gap-3">
@@ -684,6 +871,54 @@
 			{/if}
 		</div>
 
+		<!-- Date range button -->
+		<div class="relative">
+			<button
+				onclick={() => (dateMenuOpen = !dateMenuOpen)}
+				class="relative flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium transition
+					{datePreset !== 'all' ? 'border-primary bg-primary/5 text-primary' : 'border-border bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground'}"
+			>
+				<CalendarIcon class="h-4 w-4" />
+				<span>{dateRangeLabel ?? 'All time'}</span>
+			</button>
+
+			{#if dateMenuOpen}
+				<button class="fixed inset-0 z-30" onclick={() => (dateMenuOpen = false)} aria-label="Close panel"></button>
+				<div class="absolute left-0 top-full z-40 mt-2 w-56 rounded-2xl border border-border bg-popover p-2 shadow-xl">
+					{#each ([['all', 'All time'], ['thisMonth', 'This month'], ['lastMonth', 'Last month'], ['last7', 'Last 7 days'], ['last30', 'Last 30 days']] as const) as [preset, label]}
+						<button
+							onclick={() => { datePreset = preset; dateMenuOpen = false; }}
+							class="flex w-full items-center rounded-lg px-2.5 py-1.5 text-sm transition
+								{datePreset === preset ? 'bg-primary/10 font-semibold text-primary' : 'text-card-foreground hover:bg-accent'}"
+						>{label}</button>
+					{/each}
+					<div class="mt-1 border-t border-border pt-2">
+						<p class="px-2.5 pb-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Custom range</p>
+						<div class="flex items-center gap-1.5 px-2.5">
+							<input type="date" bind:value={customFrom} class="min-w-0 flex-1 rounded-lg border border-input bg-background px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-ring/50" />
+							<span class="text-xs text-muted-foreground">→</span>
+							<input type="date" bind:value={customTo} class="min-w-0 flex-1 rounded-lg border border-input bg-background px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-ring/50" />
+						</div>
+						<button
+							onclick={() => { if (customFrom && customTo) { datePreset = 'custom'; dateMenuOpen = false; } }}
+							disabled={!customFrom || !customTo}
+							class="mt-1.5 w-full rounded-lg bg-primary px-2.5 py-1.5 text-xs font-semibold text-primary-foreground disabled:opacity-40"
+						>Apply</button>
+					</div>
+				</div>
+			{/if}
+		</div>
+
+		<!-- Direction toggle -->
+		<div class="flex overflow-hidden rounded-xl border border-border text-sm">
+			{#each ([['all', 'All'], ['expense', 'Expenses'], ['income', 'Income']] as const) as [dir, label]}
+				<button
+					onclick={() => (directionFilter = dir)}
+					class="px-3 py-2 font-medium transition {directionFilter === dir ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-accent'}"
+				>{label}</button>
+			{/each}
+		</div>
+
 		<!-- Active category filter chip -->
 		{#if filterCategoryName}
 			{@const filterCat2 = data.categories.find((c) => c.id === filterCategoryId)}
@@ -696,7 +931,28 @@
 				<XIcon class="h-3 w-3" />
 			</button>
 		{/if}
+
+		<!-- CSV export -->
+		<button
+			onclick={exportCsv}
+			title="Export filtered transactions to CSV"
+			class="ml-auto flex items-center gap-1.5 rounded-xl border border-border bg-background px-3 py-2 text-sm font-medium text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+		>
+			<DownloadIcon class="h-4 w-4" />
+			<span class="hidden sm:inline">Export CSV</span>
+		</button>
 	</div>
+
+	<!-- Select all -->
+	{#if sorted.length > 0}
+		<button
+			onclick={() => toggleSelectAll(sorted.map((e) => e.id))}
+			class="flex items-center gap-2 px-1 text-xs font-medium text-muted-foreground transition hover:text-foreground"
+		>
+			<CheckSquareIcon class="h-3.5 w-3.5" />
+			{sorted.every((e) => selectedIds.has(e.id)) ? 'Deselect all' : `Select all ${sorted.length}`}
+		</button>
+	{/if}
 
 	<div class="space-y-2">
 		{#each grouped as group (group.key)}
@@ -840,17 +1096,19 @@
 						<DropdownMenu.Item onclick={() => openEdit(exp)}>
 							<Pencil class="mr-2 h-4 w-4" /> Edit
 						</DropdownMenu.Item>
+						<DropdownMenu.Item onclick={() => duplicateExpense(exp)}>
+							<CopyIcon class="mr-2 h-4 w-4" /> Duplicate
+						</DropdownMenu.Item>
 						<DropdownMenu.Separator />
-						<form method="POST" action="?/delete" use:enhance>
-							<input type="hidden" name="id" value={exp.id} />
-							<DropdownMenu.Item>
-								{#snippet child({ props })}
-									<button {...props} type="submit" class="flex w-full items-center text-destructive">
-										<Trash2 class="mr-2 h-4 w-4" /> Delete
-									</button>
-								{/snippet}
-							</DropdownMenu.Item>
-						</form>
+						<DropdownMenu.Item
+							onclick={() => { if (confirm(`Delete "${exp.name}"?`)) deleteExpense(exp); }}
+						>
+							{#snippet child({ props })}
+								<button {...props} type="button" class="flex w-full items-center text-destructive">
+									<Trash2 class="mr-2 h-4 w-4" /> Delete
+								</button>
+							{/snippet}
+						</DropdownMenu.Item>
 					</DropdownMenu.Content>
 				</DropdownMenu.Root>
 			</div>
@@ -869,6 +1127,15 @@
 				{/if}
 			</div>
 		{/if}
+
+		{#if hasMore}
+			<button
+				onclick={() => (visibleCount += PAGE_SIZE)}
+				class="w-full rounded-2xl border border-dashed border-border bg-card py-3 text-sm font-medium text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+			>
+				Show {Math.min(PAGE_SIZE, sorted.length - visibleCount)} more ({sorted.length - visibleCount} remaining)
+			</button>
+		{/if}
 	</div>
 
 	<!-- Spacer so the floating bar never covers the last row -->
@@ -878,7 +1145,7 @@
 <!-- Floating bulk-action bar -->
 {#if selectedIds.size > 0}
 	<div class="fixed inset-x-0 bottom-4 z-40 flex justify-center px-4">
-		<div class="flex items-center gap-3 rounded-2xl border border-border bg-popover px-3 py-2.5 shadow-xl">
+		<div class="flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-popover px-3 py-2.5 shadow-xl">
 			<span class="pl-1 text-sm font-semibold text-card-foreground">{selectedIds.size} selected</span>
 			<div class="h-5 w-px bg-border"></div>
 			<TagPicker
@@ -889,11 +1156,50 @@
 				onToggle={(tagId) => { applyTag(tagId, [...selectedIds]); clearSelection(); }}
 				onCreate={(name, color) => { createAndApply(name, color, [...selectedIds]); clearSelection(); }}
 			/>
+
+			<!-- Bulk re-categorize -->
+			<div class="relative">
+				<select
+					onchange={(e) => { const v = Number(e.currentTarget.value); if (v) bulkSetCategory(v); e.currentTarget.value = ''; }}
+					class="rounded-lg border border-border bg-background px-2.5 py-1.5 text-sm text-card-foreground focus:outline-none focus:ring-2 focus:ring-ring/50"
+				>
+					<option value="">Set category…</option>
+					{#each data.categories as cat (cat.id)}
+						<option value={cat.id}>{cat.name}</option>
+					{/each}
+				</select>
+			</div>
+
+			<button
+				onclick={() => { if (confirm(`Delete ${selectedIds.size} transaction${selectedIds.size > 1 ? 's' : ''}?`)) bulkDelete(); }}
+				class="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-destructive transition hover:bg-destructive/10"
+			>
+				<Trash2 class="h-3.5 w-3.5" /> Delete
+			</button>
+
 			<button
 				onclick={clearSelection}
 				class="rounded-lg px-2.5 py-1.5 text-sm font-medium text-muted-foreground transition hover:bg-accent"
 			>
 				Clear
+			</button>
+		</div>
+	</div>
+{/if}
+
+<!-- Toast -->
+{#if toast}
+	<div class="fixed inset-x-0 bottom-4 z-50 flex justify-center px-4">
+		<div class="flex items-center gap-3 rounded-2xl border border-border bg-popover px-4 py-2.5 shadow-xl">
+			<span class="text-sm text-card-foreground">{toast.message}</span>
+			{#if toast.undo}
+				<button
+					onclick={() => { toast?.undo?.(); toast = null; }}
+					class="text-sm font-semibold text-primary hover:underline"
+				>Undo</button>
+			{/if}
+			<button onclick={() => (toast = null)} class="text-muted-foreground hover:text-foreground" aria-label="Dismiss">
+				<XIcon class="h-3.5 w-3.5" />
 			</button>
 		</div>
 	</div>

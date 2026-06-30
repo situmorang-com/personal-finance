@@ -12,7 +12,8 @@ for (const sql of [
 	"ALTER TABLE expenses ADD COLUMN source_type TEXT DEFAULT 'manual'",
 	"ALTER TABLE expenses ADD COLUMN recipient TEXT",
 	"ALTER TABLE expenses ADD COLUMN remark TEXT",
-	"ALTER TABLE expenses ADD COLUMN import_ref TEXT"
+	"ALTER TABLE expenses ADD COLUMN import_ref TEXT",
+	"ALTER TABLE categories ADD COLUMN monthly_budget REAL"
 ]) {
 	try { sqlite.exec(sql); } catch { /* column already exists */ }
 }

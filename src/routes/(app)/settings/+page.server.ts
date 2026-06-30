@@ -3,12 +3,14 @@ import type { Actions, PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
 import { categories, expenses, tags, expenseTags, tagRules, categoryRules, categoryKeywords } from '$lib/server/db/schema';
 import { and, eq } from 'drizzle-orm';
+import { ensureCategoryRuleCategories } from '$lib/server/categorizer';
 
 export const load: PageServerLoad = async (event) => {
 	const session = await event.locals.auth();
 	if (!session?.user) throw redirect(303, '/login');
 	const userId = session.user.id;
 
+	ensureCategoryRuleCategories(userId);
 	const cats = db.select().from(categories).where(eq(categories.userId, userId)).all();
 	const userTags = db.select().from(tags).where(eq(tags.userId, userId)).all();
 

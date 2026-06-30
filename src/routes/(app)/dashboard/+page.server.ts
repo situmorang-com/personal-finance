@@ -13,7 +13,7 @@ export const load: PageServerLoad = async (event) => {
 
 	ensureDefaultCategories(userId);
 	ensureDefaultCurrencies(userId);
-	await refreshRatesIfStale(userId);
+	refreshRatesIfStale(userId); // fire-and-forget — don't block page load
 
 	const subs = db.select().from(subscriptions).where(eq(subscriptions.userId, userId)).all();
 	const exps = db.select().from(expenses).where(eq(expenses.userId, userId)).all();

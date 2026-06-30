@@ -151,7 +151,7 @@ export const load: PageServerLoad = async (event) => {
 	ensureDefaultCategories(userId);
 	ensureCategoryRuleCategories(userId);
 	ensureDefaultCurrencies(userId);
-	await refreshRatesIfStale(userId);
+	refreshRatesIfStale(userId); // fire-and-forget — don't block page load
 
 	const items = db
 		.select()

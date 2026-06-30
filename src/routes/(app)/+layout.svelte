@@ -9,6 +9,7 @@
 	import CreditCard from '@lucide/svelte/icons/credit-card';
 	import Receipt from '@lucide/svelte/icons/receipt';
 	import LogOut from '@lucide/svelte/icons/log-out';
+	import Settings from '@lucide/svelte/icons/settings';
 
 	let { data, children } = $props();
 
@@ -33,7 +34,8 @@
 	const nav = [
 		{ href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
 		{ href: '/subscriptions', label: 'Subscriptions', icon: CreditCard },
-		{ href: '/expenses', label: 'Expenses', icon: Receipt }
+		{ href: '/expenses', label: 'Expenses', icon: Receipt },
+		{ href: '/settings', label: 'Settings', icon: Settings }
 	];
 </script>
 

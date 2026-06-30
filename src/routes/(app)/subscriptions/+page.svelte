@@ -93,7 +93,7 @@
 		</div>
 		<button
 			onclick={openAdd}
-			class="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:opacity-90"
+			class="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition hover:opacity-90 hover:glow-primary"
 		>
 			<PlusIcon class="h-4 w-4" />
 			New Subscription
@@ -116,12 +116,17 @@
 
 	<!-- List -->
 	<div class="space-y-2.5">
-		{#each filtered as sub (sub.id)}
+		{#each filtered as sub, i (sub.id)}
 			{@const cat = data.categories.find((c) => c.id === sub.categoryId)}
 			{@const subCurrency = data.currencies.find((c) => c.id === sub.currencyId)}
 			{@const progress = renewalProgress(sub.nextRenewal, sub.billingCycle)}
 			{@const days = daysUntil(sub.nextRenewal)}
-			<div class="overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition {sub.active ? '' : 'opacity-60'}">
+			<div
+				class="glass-card animate-in fade-in slide-in-from-bottom-1 overflow-hidden rounded-2xl transition-all duration-200 hover:scale-[1.005]
+					{sub.active ? '' : 'opacity-60'}
+					{sub.active && days <= 3 ? 'drop-shadow-[0_0_18px_rgba(244,63,94,0.15)]' : ''}"
+				style="animation-delay: {i * 40}ms; animation-duration: 350ms; animation-fill-mode: backwards;"
+			>
 				<div class="flex items-center gap-3 p-4 sm:gap-4">
 					<!-- Logo -->
 					<div class="shrink-0">
@@ -141,7 +146,7 @@
 							{#if sub.active}
 								<span
 									class="rounded-full px-2 py-0.5 font-medium {days <= 3
-										? 'bg-destructive/10 text-destructive'
+										? 'bg-destructive/10 text-destructive animate-glow-pulse'
 										: days <= 7
 											? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
 											: 'bg-muted text-muted-foreground'}"
@@ -162,7 +167,7 @@
 
 					<!-- Price -->
 					<div class="shrink-0 text-right">
-						<p class="text-lg font-bold tracking-tight text-card-foreground">
+						<p class="tabular text-lg font-bold tracking-tight text-card-foreground">
 							{formatMoney(sub.price, subCurrency)}<span class="text-xs font-medium text-muted-foreground">{cycleLabel(sub.billingCycle)}</span>
 						</p>
 						{#if sub.billingCycle !== 'monthly' || (sub.currencyId && sub.currencyId !== data.mainCurrency.id)}

@@ -44,7 +44,8 @@
 			stroke-width={thickness}
 			stroke-linecap="round"
 			stroke-dasharray="{dash} {semi}"
-			class="transition-all duration-500"
+			class="transition-all duration-700 ease-out"
+			style="filter: drop-shadow(0 0 8px {color}66)"
 		/>
 	</svg>
 	<div class="-mt-8 text-center">

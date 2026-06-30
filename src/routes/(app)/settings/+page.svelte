@@ -35,12 +35,12 @@
 	</div>
 
 	<!-- ── Categories ────────────────────────────────────────────────────── -->
-	<section class="space-y-3">
+	<section class="animate-in fade-in slide-in-from-bottom-1 space-y-3 duration-400">
 		<h2 class="text-base font-semibold text-card-foreground">Categories</h2>
 
-		<div class="divide-y divide-border rounded-2xl border border-border bg-card">
+		<div class="glass-card divide-y divide-border/60 rounded-2xl">
 			{#each sortedCats as cat (cat.id)}
-				<div class="flex items-center gap-3 px-4 py-3">
+				<div class="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-accent/30">
 					<!-- Color swatch -->
 					<span class="h-3 w-3 shrink-0 rounded-full" style="background-color: {cat.color}"></span>
 
@@ -150,7 +150,7 @@
 
 				<!-- Keywords accordion -->
 				{#if expandedCatId === cat.id}
-					<div class="border-t border-border bg-muted/30 px-4 py-3">
+					<div class="animate-in fade-in slide-in-from-top-1 border-t border-border bg-muted/30 px-4 py-3 duration-200">
 						<p class="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
 							Keywords — matched against merchant name &amp; remark on import
 						</p>
@@ -199,7 +199,7 @@
 	</section>
 
 	<!-- ── Tags ──────────────────────────────────────────────────────────── -->
-	<section class="space-y-3">
+	<section class="animate-in fade-in slide-in-from-bottom-1 space-y-3 duration-400" style="animation-delay: 80ms; animation-fill-mode: backwards;">
 		<h2 class="text-base font-semibold text-card-foreground">Tags</h2>
 
 		{#if data.tags.length === 0}
@@ -207,9 +207,9 @@
 				No tags yet — add them from the Expenses page.
 			</p>
 		{:else}
-			<div class="divide-y divide-border rounded-2xl border border-border bg-card">
+			<div class="glass-card divide-y divide-border/60 rounded-2xl">
 				{#each sortedTags as tag (tag.id)}
-					<div class="flex items-center gap-3 px-4 py-3">
+					<div class="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-accent/30">
 						<span class="h-3 w-3 shrink-0 rounded-full" style="background-color: {tag.color}"></span>
 
 						{#if editingTag?.id === tag.id}

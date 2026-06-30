@@ -107,17 +107,21 @@
 	<section>
 		<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Upcoming payments</h2>
 		<div class="flex gap-3 overflow-x-auto pb-1">
-			{#each upcoming as sub (sub.id)}
+			{#each upcoming as sub, i (sub.id)}
 				{@const cat = data.categories.find((c) => c.id === sub.categoryId)}
 				{@const subCurrency = data.currencies.find((c) => c.id === sub.currencyId)}
 				{@const d = daysUntil(sub.nextRenewal)}
-				<div class="min-w-[140px] rounded-2xl border border-border bg-card p-4 shadow-sm">
+				<div
+					class="glass-card glass-card-hover animate-in fade-in slide-in-from-bottom-2 min-w-[140px] rounded-2xl p-4
+						{d <= 3 ? 'drop-shadow-[0_0_16px_rgba(244,63,94,0.18)]' : d <= 7 ? 'drop-shadow-[0_0_16px_rgba(245,158,11,0.15)]' : ''}"
+					style="animation-delay: {i * 60}ms; animation-duration: 400ms; animation-fill-mode: backwards;"
+				>
 					<Logo name={sub.name} website={sub.website} color={cat?.color ?? hashColor(sub.name)} size={36} />
 					<p class="mt-3 truncate text-sm font-semibold text-card-foreground">{sub.name}</p>
 					<p class="text-xs text-muted-foreground">{sub.nextRenewal}</p>
-					<p class="mt-1 font-bold text-card-foreground">{formatMoney(sub.price, subCurrency)}</p>
+					<p class="tabular mt-1 font-bold text-card-foreground">{formatMoney(sub.price, subCurrency)}</p>
 					{#if d <= 7}
-						<p class="mt-0.5 text-xs {d <= 3 ? 'text-destructive' : 'text-amber-500'}">
+						<p class="mt-0.5 text-xs font-medium {d <= 3 ? 'text-rose-500' : 'text-amber-500'} {d <= 3 ? 'animate-glow-pulse' : ''}">
 							{d === 0 ? 'Today' : d < 0 ? 'Overdue' : `in ${d}d`}
 						</p>
 					{/if}
@@ -174,7 +178,7 @@
 		{/if}
 
 		{#if budgetUsedPct != null}
-			<div class="grid grid-cols-1 gap-4 rounded-2xl border border-border bg-card p-5 shadow-sm sm:grid-cols-[auto_1fr] sm:items-center sm:gap-8">
+			<div class="glass-card grid grid-cols-1 gap-4 rounded-2xl p-5 sm:grid-cols-[auto_1fr] sm:items-center sm:gap-8">
 				<div class="flex justify-center">
 					<Gauge
 						value={budgetUsedPct}
@@ -216,7 +220,7 @@
 
 	<!-- Category breakdown + this month expenses -->
 	<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-		<section class="rounded-2xl border border-border bg-card p-5 shadow-sm">
+		<section class="glass-card glass-card-hover rounded-2xl p-5 drop-shadow-[0_0_24px_rgba(99,102,241,0.08)]">
 			<h2 class="text-sm font-semibold text-card-foreground">Spending by category</h2>
 			<p class="mb-4 text-xs text-muted-foreground">Monthly subscriptions + this month's expenses</p>
 			{#if donutTotal > 0}
@@ -230,22 +234,25 @@
 			{/if}
 		</section>
 
-		<section class="rounded-2xl border border-border bg-card p-5 shadow-sm">
+		<section class="glass-card glass-card-hover rounded-2xl p-5">
 			<h2 class="text-sm font-semibold text-card-foreground">This month's expenses</h2>
 			<p class="mb-4 text-xs text-muted-foreground">{monthExpenses.length} entries · {formatMoney(monthExpenseTotal, data.mainCurrency)}</p>
 			<ul class="space-y-2.5">
-				{#each monthExpenses.slice(0, 6) as exp (exp.id)}
+				{#each monthExpenses.slice(0, 6) as exp, i (exp.id)}
 					{@const cat = data.categories.find((c) => c.id === exp.categoryId)}
 					{@const expCurrency = data.currencies.find((c) => c.id === exp.currencyId)}
-					<li class="flex items-center gap-3 text-sm">
+					<li
+						class="animate-in fade-in slide-in-from-left-1 flex items-center gap-3 text-sm"
+						style="animation-delay: {i * 50}ms; animation-duration: 300ms; animation-fill-mode: backwards;"
+					>
 						<div
-							class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white"
+							class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white transition-transform hover:scale-110"
 							style="background-color: {cat?.color ?? hashColor(exp.name)}"
 						>
 							{exp.name.charAt(0).toUpperCase()}
 						</div>
 						<span class="flex-1 truncate text-muted-foreground">{exp.name}</span>
-						<span class="font-semibold text-card-foreground">{formatMoney(exp.amount, expCurrency)}</span>
+						<span class="tabular font-semibold text-card-foreground">{formatMoney(exp.amount, expCurrency)}</span>
 					</li>
 				{:else}
 					<li class="text-sm text-muted-foreground">No expenses this month.</li>
@@ -259,9 +266,9 @@
 </div>
 
 {#snippet statCard(label: string, value: string, accent?: 'destructive' | 'success')}
-	<div class="rounded-2xl border border-border bg-card p-4 shadow-sm">
+	<div class="glass-card glass-card-hover rounded-2xl p-4">
 		<p class="text-xs text-muted-foreground">{label}</p>
-		<p class="mt-1.5 text-xl font-bold {accent === 'destructive' ? 'text-destructive' : accent === 'success' ? 'text-emerald-600 dark:text-emerald-400' : 'text-card-foreground'}">
+		<p class="tabular mt-1.5 text-xl font-bold {accent === 'destructive' ? 'text-destructive' : accent === 'success' ? 'text-emerald-600 dark:text-emerald-400' : 'text-card-foreground'}">
 			{value}
 		</p>
 	</div>

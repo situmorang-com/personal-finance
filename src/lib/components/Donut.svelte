@@ -42,15 +42,18 @@
 		<svg width={size} height={size} viewBox="0 0 {size} {size}" class="-rotate-90">
 			<circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="var(--muted)" stroke-width={thickness} />
 			{#each segments as seg (seg.label)}
+				{@const active = selectedLabel === seg.label}
 				<circle
 					cx={size / 2}
 					cy={size / 2}
 					r={radius}
 					fill="none"
 					stroke={seg.color}
-					stroke-width={thickness}
+					stroke-width={active ? thickness + 3 : thickness}
 					stroke-dasharray="{seg.dash} {circumference - seg.dash}"
 					stroke-dashoffset={-seg.offset}
+					class="transition-all duration-700 ease-out"
+					style={active ? `filter: drop-shadow(0 0 6px ${seg.color}99)` : ''}
 				/>
 			{/each}
 		</svg>

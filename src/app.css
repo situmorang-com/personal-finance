@@ -134,3 +134,21 @@
 	font-variant-numeric: tabular-nums;
 	letter-spacing: 0.01em;
 }
+
+@keyframes mesh-float {
+	0%, 100% { transform: translate(0, 0) scale(1); }
+	50% { transform: translate(2%, -3%) scale(1.05); }
+}
+
+@utility animate-mesh-float {
+	animation: mesh-float 16s ease-in-out infinite;
+}
+
+@keyframes glow-pulse {
+	0%, 100% { opacity: 1; }
+	50% { opacity: 0.55; }
+}
+
+@utility animate-glow-pulse {
+	animation: glow-pulse 2.2s ease-in-out infinite;
+}

@@ -186,73 +186,76 @@
 	{@const ins = data.insights}
 	{@const vsLast = ins.lastMonth.total > 0 ? Math.round(((ins.thisMonth.total - ins.lastMonth.total) / ins.lastMonth.total) * 100) : null}
 
-	<!-- Summary stat cards -->
-	<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-		<div class="rounded-2xl border border-border bg-card p-4">
-			<p class="text-xs text-muted-foreground">Spent this month</p>
-			<p class="mt-1 text-lg font-bold text-card-foreground">{formatMoney(ins.thisMonth.total, data.mainCurrency)}</p>
-			{#if vsLast !== null}
-				<p class="mt-0.5 text-xs {vsLast > 0 ? 'text-rose-500' : 'text-emerald-500'}">
-					{vsLast > 0 ? '▲' : '▼'} {Math.abs(vsLast)}% vs last month
-				</p>
-			{/if}
-		</div>
-		<div class="rounded-2xl border border-border bg-card p-4">
-			<p class="text-xs text-muted-foreground">Income received</p>
-			<p class="mt-1 text-lg font-bold text-emerald-600 dark:text-emerald-400">{formatMoney(ins.thisMonth.income, data.mainCurrency)}</p>
-			<p class="mt-0.5 text-xs text-muted-foreground">
-				Net {#if ins.thisMonth.income >= ins.thisMonth.total}
-					<span class="text-emerald-500">+{formatMoney(ins.thisMonth.income - ins.thisMonth.total, data.mainCurrency)}</span>
-				{:else}
-					<span class="text-rose-500">-{formatMoney(ins.thisMonth.total - ins.thisMonth.income, data.mainCurrency)}</span>
-				{/if}
-			</p>
-		</div>
-		<div class="rounded-2xl border border-border bg-card p-4">
-			<p class="text-xs text-muted-foreground">Daily average</p>
-			<p class="mt-1 text-lg font-bold text-card-foreground">{formatMoney(ins.thisMonth.dailyAvg, data.mainCurrency)}</p>
-			<p class="mt-0.5 text-xs text-muted-foreground">{ins.thisMonth.txnCount} transactions</p>
-		</div>
-		<div class="rounded-2xl border border-border bg-card p-4">
-			<p class="text-xs text-muted-foreground">Top category</p>
-			{#if ins.topCategory}
-				<p class="mt-1 text-lg font-bold" style="color: {ins.topCategory.color}">{ins.topCategory.name}</p>
-				<p class="mt-0.5 text-xs text-muted-foreground">{ins.topCategory.pct}% of spending</p>
-			{:else}
-				<p class="mt-1 text-sm text-muted-foreground">—</p>
-			{/if}
-		</div>
-	</div>
+	<!-- Donut (left) + stat cards stacked (right) -->
+	{@const filterCat = filterCategoryId !== null ? data.categories.find((c) => c.id === filterCategoryId) : null}
+	<div class="flex gap-3">
+		<!-- Spending by category donut -->
+		{#if ins.categorySlices.length > 0}
+			<div class="shrink-0 rounded-2xl border border-border bg-card p-5">
+				<div class="mb-3 flex items-center justify-between gap-4">
+					<p class="text-sm font-semibold text-card-foreground">Spending by category</p>
+					{#if filterCategoryId !== null}
+						<button
+							onclick={() => (filterCategoryId = null)}
+							class="flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground hover:bg-accent"
+						>
+							<XIcon class="h-3 w-3" /> Clear
+						</button>
+					{/if}
+				</div>
+				<Donut
+					slices={ins.categorySlices}
+					size={140}
+					thickness={20}
+					centerLabel={filterCategoryId !== null ? filterCat?.name : 'total'}
+					centerValue={filterCategoryId !== null
+						? formatMoney(ins.categorySlices.find((s) => s.label === filterCat?.name)?.value ?? 0, data.mainCurrency)
+						: formatMoney(ins.thisMonth.total, data.mainCurrency)}
+					formatValue={(v) => formatMoney(v, data.mainCurrency)}
+					onSelect={selectCategory}
+					selectedLabel={filterCat?.name ?? null}
+				/>
+			</div>
+		{/if}
 
-	<!-- Category donut -->
-	{#if ins.categorySlices.length > 0}
-		{@const filterCat = filterCategoryId !== null ? data.categories.find((c) => c.id === filterCategoryId) : null}
-		<div class="rounded-2xl border border-border bg-card p-5">
-			<div class="mb-4 flex items-center justify-between">
-				<p class="text-sm font-semibold text-card-foreground">Spending by category</p>
-				{#if filterCategoryId !== null}
-					<button
-						onclick={() => (filterCategoryId = null)}
-						class="flex items-center gap-1 rounded-full border border-border px-2.5 py-0.5 text-xs font-medium text-muted-foreground hover:bg-accent"
-					>
-						<XIcon class="h-3 w-3" /> Clear filter
-					</button>
+		<!-- 4 stat cards stacked -->
+		<div class="flex min-w-0 flex-1 flex-col gap-3">
+			<div class="flex-1 rounded-2xl border border-border bg-card px-4 py-3">
+				<p class="text-xs text-muted-foreground">Spent this month</p>
+				<p class="mt-0.5 text-base font-bold text-card-foreground">{formatMoney(ins.thisMonth.total, data.mainCurrency)}</p>
+				{#if vsLast !== null}
+					<p class="mt-0.5 text-xs {vsLast > 0 ? 'text-rose-500' : 'text-emerald-500'}">
+						{vsLast > 0 ? '▲' : '▼'} {Math.abs(vsLast)}% vs last month
+					</p>
 				{/if}
 			</div>
-			<Donut
-				slices={ins.categorySlices}
-				size={160}
-				thickness={22}
-				centerLabel={filterCategoryId !== null ? filterCat?.name : 'total'}
-				centerValue={filterCategoryId !== null
-					? formatMoney(ins.categorySlices.find((s) => s.label === filterCat?.name)?.value ?? 0, data.mainCurrency)
-					: formatMoney(ins.thisMonth.total, data.mainCurrency)}
-				formatValue={(v) => formatMoney(v, data.mainCurrency)}
-				onSelect={selectCategory}
-				selectedLabel={filterCat?.name ?? null}
-			/>
+			<div class="flex-1 rounded-2xl border border-border bg-card px-4 py-3">
+				<p class="text-xs text-muted-foreground">Income received</p>
+				<p class="mt-0.5 text-base font-bold text-emerald-600 dark:text-emerald-400">{formatMoney(ins.thisMonth.income, data.mainCurrency)}</p>
+				<p class="mt-0.5 text-xs text-muted-foreground">
+					Net {#if ins.thisMonth.income >= ins.thisMonth.total}
+						<span class="text-emerald-500">+{formatMoney(ins.thisMonth.income - ins.thisMonth.total, data.mainCurrency)}</span>
+					{:else}
+						<span class="text-rose-500">-{formatMoney(ins.thisMonth.total - ins.thisMonth.income, data.mainCurrency)}</span>
+					{/if}
+				</p>
+			</div>
+			<div class="flex-1 rounded-2xl border border-border bg-card px-4 py-3">
+				<p class="text-xs text-muted-foreground">Daily average</p>
+				<p class="mt-0.5 text-base font-bold text-card-foreground">{formatMoney(ins.thisMonth.dailyAvg, data.mainCurrency)}</p>
+				<p class="mt-0.5 text-xs text-muted-foreground">{ins.thisMonth.txnCount} transactions</p>
+			</div>
+			<div class="flex-1 rounded-2xl border border-border bg-card px-4 py-3">
+				<p class="text-xs text-muted-foreground">Top category</p>
+				{#if ins.topCategory}
+					<p class="mt-0.5 text-base font-bold" style="color: {ins.topCategory.color}">{ins.topCategory.name}</p>
+					<p class="mt-0.5 text-xs text-muted-foreground">{ins.topCategory.pct}% of spending</p>
+				{:else}
+					<p class="mt-0.5 text-sm text-muted-foreground">—</p>
+				{/if}
+			</div>
 		</div>
-	{/if}
+	</div>
 
 	<!-- Insight cards row — always 3 cols -->
 	<div class="grid grid-cols-3 gap-3">

@@ -40,11 +40,11 @@ export const load: PageServerLoad = async (event) => {
 	const currs = db.select().from(currencies).where(eq(currencies.userId, userId)).all();
 	const mainCurrency = getMainCurrency(userId, currs);
 
-	// Derive upload batches from expense notes: "[bca-debit-1234567890] filename.pdf"
+	// Derive upload batches from expense importRef: "[bca-debit-1234567890] filename.pdf"
 	type Batch = { importId: string; filename: string; count: number; cardType: string; ts: number };
 	const batchMap = new Map<string, Batch>();
 	for (const exp of items) {
-		const m = exp.notes?.match(/^\[(bca-(debit|cc)-(\d+))\]\s*(.*)/);
+		const m = exp.importRef?.match(/^\[(bca-(debit|cc)-(\d+))\]\s*(.*)/);
 		if (!m) continue;
 		const [, importId, cardType, tsStr, filename] = m;
 		const ts = Number(tsStr);
@@ -206,7 +206,7 @@ export const actions: Actions = {
 						remark: tx.remark,
 						categoryId,
 						currencyId: mainCurrency.id,
-						notes: `[${importId}] ${file.name}`
+						importRef: `[${importId}] ${file.name}`
 					}).run();
 					inserted++;
 				}
@@ -240,7 +240,7 @@ export const actions: Actions = {
 
 		const result = db
 			.delete(expenses)
-			.where(and(eq(expenses.userId, userId), like(expenses.notes, `[${importId}]%`)))
+			.where(and(eq(expenses.userId, userId), like(expenses.importRef, `[${importId}]%`)))
 			.run();
 
 		return { success: true, message: `Removed ${result.changes} imported transactions.` };

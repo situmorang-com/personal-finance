@@ -11,10 +11,19 @@ for (const sql of [
 	"ALTER TABLE expenses ADD COLUMN direction TEXT NOT NULL DEFAULT 'expense'",
 	"ALTER TABLE expenses ADD COLUMN source_type TEXT DEFAULT 'manual'",
 	"ALTER TABLE expenses ADD COLUMN recipient TEXT",
-	"ALTER TABLE expenses ADD COLUMN remark TEXT"
+	"ALTER TABLE expenses ADD COLUMN remark TEXT",
+	"ALTER TABLE expenses ADD COLUMN import_ref TEXT"
 ]) {
 	try { sqlite.exec(sql); } catch { /* column already exists */ }
 }
+
+// Migrate existing import metadata from notes → import_ref
+sqlite.exec(`
+	UPDATE expenses
+	SET import_ref = notes, notes = NULL
+	WHERE notes LIKE '[bca-%' AND import_ref IS NULL
+`);
+
 
 // Create tag tables if they don't exist yet
 sqlite.exec(`

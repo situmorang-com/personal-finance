@@ -117,7 +117,8 @@ export const expenses = sqliteTable('expenses', {
 	sourceType: text('source_type', { enum: ['qr', 'transfer', 'biffast', 'autodebit', 'flazz', 'manual', 'other'] }).default('manual'),
 	recipient: text('recipient'),           // person/merchant receiving the money (transfers)
 	remark: text('remark'),                 // user's transfer note / description
-	notes: text('notes'),                   // internal import tag ([bca-debit-xxx] filename)
+	notes: text('notes'),                   // free-text user note
+	importRef: text('import_ref'),          // machine ref: "[bca-debit-xxx] filename.pdf"
 	createdAt: text('created_at')
 		.notNull()
 		.default('CURRENT_TIMESTAMP')

@@ -96,11 +96,17 @@
 		postAction('applyCategorySuggestions', {});
 	}
 
-	function bcaCardType(notes: string | null): 'debit' | 'cc' | null {
-		if (!notes) return null;
-		if (notes.match(/^\[bca-debit-/)) return 'debit';
-		if (notes.match(/^\[bca-cc-/)) return 'cc';
+	function bcaCardType(importRef: string | null): 'debit' | 'cc' | null {
+		if (!importRef) return null;
+		if (importRef.match(/^\[bca-debit-/)) return 'debit';
+		if (importRef.match(/^\[bca-cc-/)) return 'cc';
 		return null;
+	}
+
+	function importFilename(importRef: string | null): string | null {
+		if (!importRef) return null;
+		const m = importRef.match(/^\[bca-(?:debit|cc)-\d+\]\s*(.*)/);
+		return m ? m[1] : null;
 	}
 
 	function openAdd() {
@@ -361,7 +367,7 @@
 		{#each filtered as exp (exp.id)}
 			{@const cat = data.categories.find((c) => c.id === exp.categoryId)}
 			{@const expCurrency = data.currencies.find((c) => c.id === exp.currencyId)}
-			{@const bcaType = bcaCardType(exp.notes)}
+			{@const bcaType = bcaCardType(exp.importRef)}
 			{@const isIncome = exp.direction === 'income'}
 			<div class="flex items-center gap-3 rounded-2xl border bg-card p-3.5 shadow-sm transition sm:gap-4 sm:p-4
 				{selectedIds.has(exp.id) ? 'border-primary ring-1 ring-primary/30' : 'border-border'}
@@ -694,6 +700,19 @@
 					class="resize-none rounded-xl border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/50"
 				></textarea>
 			</label>
+
+			{#if editing?.importRef}
+				{@const filename = importFilename(editing.importRef)}
+				<div class="flex flex-col gap-1.5 text-sm font-medium">
+					Import source
+					<div class="flex items-center gap-2 rounded-xl border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+						<svg class="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+							<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/>
+						</svg>
+						<span class="truncate">{filename ?? editing.importRef}</span>
+					</div>
+				</div>
+			{/if}
 
 			<div class="flex gap-3 pt-2">
 				<button

@@ -151,6 +151,27 @@ export const CATEGORY_RULES: { name: string; color: string; keywords: string[] }
 		'laundry', 'binatu', 'dry clean',
 	]},
 
+	// ── Hosting & Servers ────────────────────────────────────────────────────
+	{ name: 'Hosting & Servers', color: '#0891b2', keywords: [
+		'hosting', 'vps', 'cloud server', 'cloud hosting',
+		'digitalocean', 'linode', 'vultr', 'aws', 'amazon web services',
+		'google cloud', 'gcp', 'azure', 'railway', 'render.com', 'fly.io',
+		'vercel', 'netlify', 'cloudflare', 'heroku', 'hostinger', 'niagahoster',
+		'dewaweb', 'rumahweb', 'idcloudhost', 'cpanel', 'plesk',
+	]},
+
+	// ── Software ─────────────────────────────────────────────────────────────
+	{ name: 'Software', color: '#7c3aed', keywords: [
+		// AI tools
+		'chatgpt', 'openai', 'claude', 'anthropic', 'midjourney', 'perplexity',
+		'github copilot', 'copilot', 'cursor', 'gemini advanced', 'character.ai',
+		// Productivity & creative SaaS
+		'notion', 'figma', 'adobe', 'canva', 'slack', 'zoom', 'dropbox',
+		'1password', 'lastpass', 'evernote', 'trello', 'asana', 'monday.com',
+		'github', 'gitlab', 'jetbrains', 'microsoft 365', 'office 365', 'google one',
+		'google workspace', 'icloud', 'grammarly',
+	]},
+
 	// ── Fees & Charges ───────────────────────────────────────────────────────
 	{ name: 'Fees & Charges', color: '#6b7280', keywords: [
 		'biaya adm', 'biaya admin', 'biaya transfer', 'biaya bulanan',

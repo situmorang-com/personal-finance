@@ -5,6 +5,8 @@
 	import Logo from '$lib/components/Logo.svelte';
 	import Donut from '$lib/components/Donut.svelte';
 	import Gauge from '$lib/components/Gauge.svelte';
+	import Sparkline from '$lib/components/Sparkline.svelte';
+	import { countUp } from '$lib/actions/countUp';
 	import Pencil from '@lucide/svelte/icons/pencil';
 	import Check from '@lucide/svelte/icons/check';
 
@@ -98,13 +100,53 @@
 		}))
 	);
 	const donutTotal = $derived(categoryBreakdown.rows.reduce((sum, r) => sum + r.amount, 0));
+
+	// Total monthly outflow = active subscriptions + this month's expenses
+	const totalMonthlyOutflow = $derived(monthlySubTotal + monthExpenseTotal);
+
+	// Last 6 months of expense spending, for the trend sparkline
+	const spendingTrend = $derived.by(() => {
+		const months: { label: string; key: string }[] = [];
+		for (let i = 5; i >= 0; i--) {
+			const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+			months.push({
+				label: d.toLocaleDateString('en-US', { month: 'short' }),
+				key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+			});
+		}
+		return months.map(({ label, key }) => ({
+			label,
+			value: data.expenses
+				.filter((e) => e.direction !== 'income' && e.date.startsWith(key))
+				.reduce((sum, e) => sum + toMain(e.amount, e.currencyId), 0)
+		}));
+	});
 </script>
 
 <div class="space-y-8">
-	<h1 class="text-2xl font-bold text-foreground">Dashboard</h1>
+	<!-- Hero -->
+	<div class="glass-card animate-in fade-in slide-in-from-bottom-2 relative overflow-hidden rounded-3xl p-6 drop-shadow-[0_0_32px_rgba(99,102,241,0.1)] duration-500 sm:p-8">
+		<div class="flex items-center gap-2">
+			<span class="relative flex h-2 w-2">
+				<span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+				<span class="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
+			</span>
+			<span class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Live overview</span>
+		</div>
+		<h1 class="mt-2 text-2xl font-bold text-foreground">Dashboard</h1>
+		<p class="mt-5 text-sm text-muted-foreground">Total monthly outflow</p>
+		<p
+			class="tabular mt-1 text-4xl font-bold tracking-tight text-foreground sm:text-5xl"
+			use:countUp={{ value: totalMonthlyOutflow, format: (n) => formatMoney(n, data.mainCurrency) }}
+		>{formatMoney(totalMonthlyOutflow, data.mainCurrency)}</p>
+		<p class="mt-2 text-xs text-muted-foreground">
+			Subscriptions <span class="tabular font-medium text-card-foreground">{formatMoney(monthlySubTotal, data.mainCurrency)}</span>
+			+ Expenses <span class="tabular font-medium text-card-foreground">{formatMoney(monthExpenseTotal, data.mainCurrency)}</span>
+		</p>
+	</div>
 
 	<!-- Upcoming payments -->
-	<section>
+	<section class="animate-in fade-in slide-in-from-bottom-1 duration-500" style="animation-delay: 60ms; animation-fill-mode: backwards;">
 		<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Upcoming payments</h2>
 		<div class="flex gap-3 overflow-x-auto pb-1">
 			{#each upcoming as sub, i (sub.id)}
@@ -133,17 +175,17 @@
 	</section>
 
 	<!-- Subscription stats -->
-	<section>
+	<section class="animate-in fade-in slide-in-from-bottom-1 duration-500" style="animation-delay: 120ms; animation-fill-mode: backwards;">
 		<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Your subscriptions</h2>
 		<div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-			{@render statCard('Active subscriptions', String(activeSubs.length))}
-			{@render statCard('Monthly cost', formatMoney(monthlySubTotal, data.mainCurrency))}
-			{@render statCard('Yearly cost', formatMoney(yearlySubTotal, data.mainCurrency))}
+			{@render statCard('Active subscriptions', activeSubs.length, (n) => String(Math.round(n)))}
+			{@render statCard('Monthly cost', monthlySubTotal, (n) => formatMoney(n, data.mainCurrency))}
+			{@render statCard('Yearly cost', yearlySubTotal, (n) => formatMoney(n, data.mainCurrency))}
 		</div>
 	</section>
 
 	<!-- Budget -->
-	<section>
+	<section class="animate-in fade-in slide-in-from-bottom-1 duration-500" style="animation-delay: 180ms; animation-fill-mode: backwards;">
 		<div class="mb-3 flex items-center justify-between">
 			<h2 class="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Your budget</h2>
 			<button
@@ -187,40 +229,54 @@
 					/>
 				</div>
 				<div class="grid grid-cols-2 gap-3">
-					{@render statCard('Monthly spend', formatMoney(monthlySubTotal, data.mainCurrency))}
-					{@render statCard('Budget', formatMoney(data.monthlyBudget ?? 0, data.mainCurrency))}
-					{@render statCard('Due this month', formatMoney(amountDueThisMonth, data.mainCurrency))}
+					{@render statCard('Monthly spend', monthlySubTotal, (n) => formatMoney(n, data.mainCurrency))}
+					{@render statCard('Budget', data.monthlyBudget ?? 0, (n) => formatMoney(n, data.mainCurrency))}
+					{@render statCard('Due this month', amountDueThisMonth, (n) => formatMoney(n, data.mainCurrency))}
 					{@render statCard(
 						overBudget ? 'Over budget' : 'Remaining',
-						overBudget
-							? formatMoney(monthlySubTotal - (data.monthlyBudget ?? 0), data.mainCurrency)
-							: formatMoney(budgetRemaining ?? 0, data.mainCurrency),
+						overBudget ? monthlySubTotal - (data.monthlyBudget ?? 0) : (budgetRemaining ?? 0),
+						(n) => formatMoney(n, data.mainCurrency),
 						overBudget ? 'destructive' : 'success'
 					)}
 				</div>
 			</div>
 		{:else}
 			<div class="grid grid-cols-2 gap-3">
-				{@render statCard('Due this month', formatMoney(amountDueThisMonth, data.mainCurrency))}
-				{@render statCard('Monthly spend', formatMoney(monthlySubTotal, data.mainCurrency))}
+				{@render statCard('Due this month', amountDueThisMonth, (n) => formatMoney(n, data.mainCurrency))}
+				{@render statCard('Monthly spend', monthlySubTotal, (n) => formatMoney(n, data.mainCurrency))}
 			</div>
 			<p class="mt-3 text-sm text-muted-foreground">Set a monthly budget to track how much headroom you have.</p>
 		{/if}
 	</section>
 
 	<!-- Savings -->
-	<section>
+	<section class="animate-in fade-in slide-in-from-bottom-1 duration-500" style="animation-delay: 240ms; animation-fill-mode: backwards;">
 		<h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Your savings (inactive subscriptions)</h2>
 		<div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-			{@render statCard('Inactive subscriptions', String(inactiveSubs.length))}
-			{@render statCard('Monthly savings', formatMoney(monthlySavings, data.mainCurrency), 'success')}
-			{@render statCard('Yearly savings', formatMoney(yearlySavings, data.mainCurrency), 'success')}
+			{@render statCard('Inactive subscriptions', inactiveSubs.length, (n) => String(Math.round(n)))}
+			{@render statCard('Monthly savings', monthlySavings, (n) => formatMoney(n, data.mainCurrency), 'success')}
+			{@render statCard('Yearly savings', yearlySavings, (n) => formatMoney(n, data.mainCurrency), 'success')}
 		</div>
 	</section>
 
+	<!-- Spending trend -->
+	{#if spendingTrend.some((m) => m.value > 0)}
+		<section
+			class="glass-card glass-card-hover animate-in fade-in slide-in-from-bottom-1 rounded-2xl p-5 duration-500"
+			style="animation-delay: 300ms; animation-fill-mode: backwards;"
+		>
+			<h2 class="text-sm font-semibold text-card-foreground">Spending trend</h2>
+			<p class="mb-4 text-xs text-muted-foreground">Expenses over the last 6 months</p>
+			<Sparkline points={spendingTrend} height={90} color="var(--primary)" />
+		</section>
+	{/if}
+
 	<!-- Category breakdown + this month expenses -->
 	<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-		<section class="glass-card glass-card-hover rounded-2xl p-5 drop-shadow-[0_0_24px_rgba(99,102,241,0.08)]">
+		<section
+			class="glass-card glass-card-hover animate-in fade-in slide-in-from-bottom-1 rounded-2xl p-5 drop-shadow-[0_0_24px_rgba(99,102,241,0.08)] duration-500"
+			style="animation-delay: 360ms; animation-fill-mode: backwards;"
+		>
 			<h2 class="text-sm font-semibold text-card-foreground">Spending by category</h2>
 			<p class="mb-4 text-xs text-muted-foreground">Monthly subscriptions + this month's expenses</p>
 			{#if donutTotal > 0}
@@ -234,7 +290,10 @@
 			{/if}
 		</section>
 
-		<section class="glass-card glass-card-hover rounded-2xl p-5">
+		<section
+			class="glass-card glass-card-hover animate-in fade-in slide-in-from-bottom-1 rounded-2xl p-5 duration-500"
+			style="animation-delay: 420ms; animation-fill-mode: backwards;"
+		>
 			<h2 class="text-sm font-semibold text-card-foreground">This month's expenses</h2>
 			<p class="mb-4 text-xs text-muted-foreground">{monthExpenses.length} entries · {formatMoney(monthExpenseTotal, data.mainCurrency)}</p>
 			<ul class="space-y-2.5">
@@ -265,11 +324,12 @@
 	</div>
 </div>
 
-{#snippet statCard(label: string, value: string, accent?: 'destructive' | 'success')}
+{#snippet statCard(label: string, raw: number, format: (n: number) => string, accent?: 'destructive' | 'success')}
 	<div class="glass-card glass-card-hover rounded-2xl p-4">
 		<p class="text-xs text-muted-foreground">{label}</p>
-		<p class="tabular mt-1.5 text-xl font-bold {accent === 'destructive' ? 'text-destructive' : accent === 'success' ? 'text-emerald-600 dark:text-emerald-400' : 'text-card-foreground'}">
-			{value}
-		</p>
+		<p
+			class="tabular mt-1.5 text-xl font-bold {accent === 'destructive' ? 'text-destructive' : accent === 'success' ? 'text-emerald-600 dark:text-emerald-400' : 'text-card-foreground'}"
+			use:countUp={{ value: raw, format }}
+		>{format(raw)}</p>
 	</div>
 {/snippet}

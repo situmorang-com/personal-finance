@@ -4,7 +4,12 @@ RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
-RUN npm run build
+# SvelteKit imports server modules while analysing the production bundle. Prepare
+# a disposable database so importing the DB module has a valid schema. The build
+# database remains in this stage and is not copied into the runtime image.
+RUN mkdir -p /app/data \
+	&& node_modules/.bin/tsx src/lib/server/db/migrate.ts \
+	&& npm run build
 
 FROM node:22-slim
 WORKDIR /app

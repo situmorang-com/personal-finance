@@ -27,4 +27,6 @@ ENV DATABASE_URL=/app/data/db.sqlite
 
 USER appuser
 EXPOSE 3000
-CMD ["sh", "-c", "node_modules/.bin/tsx migrate.ts && node build"]
+CMD ["sh", "-c", "sleep infinity"]
+# TEMPORARY: overridden to keep the container alive for manual DB recovery via Coolify Terminal.
+# Revert to: CMD ["sh", "-c", "node_modules/.bin/tsx migrate.ts && node build"]
